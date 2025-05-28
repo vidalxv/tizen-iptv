@@ -1,5 +1,212 @@
 .App {
+  text-align: left;
+  color: #f0f0f0;
+  background-color: #141414;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Layout com sidebar */
+.app-content {
+  transition: margin-left 0.3s ease;
+}
+
+.app-content.with-sidebar {
+  margin-left: 280px;
+}
+
+/* Conteúdo principal */
+.main-content {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.section-placeholder {
   text-align: center;
+  color: #f0f0f0;
+  max-width: 600px;
+}
+
+.placeholder-content {
+  background: linear-gradient(
+    135deg,
+    rgba(20, 20, 20, 0.9) 0%,
+    rgba(30, 30, 30, 0.9) 100%
+  );
+  padding: 60px 40px;
+  border-radius: 20px;
+  border: 2px solid rgba(255, 140, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+}
+
+.placeholder-content i {
+  font-size: 4rem;
+  color: #FF8C00;
+  margin-bottom: 30px;
+  display: block;
+}
+
+.placeholder-content h2 {
+  font-size: 2.5rem;
+  margin: 0 0 20px 0;
+  color: #f0f0f0;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.placeholder-content p {
+  font-size: 1.2rem;
+  margin: 0 0 40px 0;
+  color: #e0e0e0;
+  line-height: 1.6;
+}
+
+.back-btn {
+  background: linear-gradient(45deg, #FF8C00, #ff9500);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
+}
+
+.back-btn:hover {
+  background: linear-gradient(45deg, #e67e00, #ff8c00);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 140, 0, 0.4);
+}
+
+.back-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.5);
+}
+
+/* Estilos para foco global */
+.focused {
+  outline: none !important;
+  border: 2px solid #FF8C00 !important;
+  box-shadow: 0 0 15px rgba(255, 140, 0, 0.7) !important;
+  transform: scale(1.05);
+  transition: all 0.3s ease;
+}
+
+/* Animações globais */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-content {
+  animation: fadeIn 0.5s ease;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FF8C00;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e67e00;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .app-content.with-sidebar {
+    margin-left: 70px;
+  }
+  
+  .placeholder-content {
+    padding: 40px 20px;
+    margin: 20px;
+  }
+  
+  .placeholder-content h2 {
+    font-size: 2rem;
+  }
+  
+  .placeholder-content p {
+    font-size: 1rem;
+  }
+  
+  .back-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-content.with-sidebar {
+    margin-left: 0;
+  }
+  
+  .placeholder-content {
+    padding: 30px 15px;
+    margin: 10px;
+  }
+  
+  .placeholder-content h2 {
+    font-size: 1.5rem;
+  }
+  
+  .placeholder-content i {
+    font-size: 3rem;
+  }
+}
+
+/* Transições suaves entre seções */
+.section-transition {
+  transition: all 0.5s ease;
+}
+
+/* Loading state global */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #FF8C00;
+}
+
+.loading i {
+  font-size: 2rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .App-logo {
