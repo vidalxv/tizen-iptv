@@ -1,0 +1,514 @@
+/* Container principal do player */
+.video-player-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Elemento de vídeo */
+.video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+/* Overlay de Loading */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 10;
+}
+
+.loading-spinner {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  color: #FF8C00;
+}
+
+.loading-overlay p {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+/* Overlay de Erro */
+.error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+}
+
+.error-content {
+  text-align: center;
+  color: white;
+  max-width: 500px;
+  padding: 40px;
+  background: rgba(20, 20, 20, 0.9);
+  border-radius: 12px;
+  border: 2px solid #dc3545;
+}
+
+.error-content i {
+  font-size: 4rem;
+  color: #dc3545;
+  margin-bottom: 20px;
+}
+
+.error-content h3 {
+  font-size: 1.5rem;
+  margin: 0 0 15px 0;
+  color: #dc3545;
+}
+
+.error-content p {
+  font-size: 1rem;
+  margin: 0 0 25px 0;
+  color: #ccc;
+  line-height: 1.4;
+}
+
+.retry-button {
+  background: linear-gradient(145deg, #dc3545, #b02a37);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 12px 24px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto;
+}
+
+.retry-button:hover {
+  background: linear-gradient(145deg, #b02a37, #8d1e2e);
+  transform: translateY(-2px);
+}
+
+/* Overlay de Informações */
+.info-overlay {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+  padding: 30px;
+  border-radius: 12px;
+  color: white;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  transition: opacity 0.3s ease;
+}
+
+.stream-info h2 {
+  font-size: 2rem;
+  margin: 0 0 8px 0;
+  color: #FF8C00;
+  font-weight: bold;
+}
+
+.stream-category {
+  font-size: 1rem;
+  margin: 0 0 10px 0;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stream-description {
+  font-size: 1rem;
+  margin: 0;
+  color: #ccc;
+  line-height: 1.4;
+  max-width: 600px;
+}
+
+.time-info {
+  text-align: right;
+}
+
+.current-time {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #FF8C00;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Overlay de Controles */
+.controls-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  transition: opacity 0.3s ease;
+}
+
+.controls-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.controls-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.controls-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+/* Botões de controle */
+.back-button,
+.info-button,
+.play-pause-button,
+.mute-button {
+  background: rgba(20, 20, 20, 0.8);
+  border: 2px solid #FF8C00;
+  border-radius: 50px;
+  color: #FF8C00;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  backdrop-filter: blur(5px);
+}
+
+.back-button:hover,
+.info-button:hover,
+.mute-button:hover {
+  background: #FF8C00;
+  color: black;
+  transform: scale(1.05);
+}
+
+.play-pause-button {
+  font-size: 3rem;
+  padding: 25px;
+  width: 80px;
+  height: 80px;
+  justify-content: center;
+}
+
+.play-pause-button:hover {
+  background: #FF8C00;
+  color: black;
+  transform: scale(1.1);
+}
+
+/* Controle de Volume */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: rgba(20, 20, 20, 0.8);
+  padding: 10px 20px;
+  border-radius: 25px;
+  backdrop-filter: blur(5px);
+  border: 1px solid #333;
+}
+
+.volume-bar {
+  width: 100px;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.volume-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF8C00, #ffb347);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.volume-text {
+  font-size: 0.9rem;
+  color: #FF8C00;
+  font-weight: bold;
+  min-width: 35px;
+}
+
+/* Informações do Player */
+.player-info {
+  background: rgba(20, 20, 20, 0.8);
+  padding: 10px 20px;
+  border-radius: 25px;
+  backdrop-filter: blur(5px);
+  border: 1px solid #333;
+}
+
+.status {
+  color: #FF8C00;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.error-status {
+  color: #dc3545;
+}
+
+/* Overlay de Ajuda */
+.help-overlay {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(20, 20, 20, 0.9);
+  padding: 15px 20px;
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
+  border: 1px solid #333;
+  z-index: 6;
+}
+
+.help-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.help-text span {
+  color: #ccc;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+  .info-overlay {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .stream-info h2 {
+    font-size: 1.5rem;
+  }
+  
+  .current-time {
+    font-size: 1.5rem;
+  }
+  
+  .controls-bottom {
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+  }
+  
+  .volume-control {
+    order: 1;
+  }
+  
+  .player-info {
+    order: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .info-overlay {
+    padding: 20px;
+  }
+  
+  .stream-info h2 {
+    font-size: 1.3rem;
+  }
+  
+  .stream-description {
+    font-size: 0.9rem;
+    max-width: none;
+  }
+  
+  .play-pause-button {
+    font-size: 2rem;
+    padding: 20px;
+    width: 60px;
+    height: 60px;
+  }
+  
+  .volume-bar {
+    width: 80px;
+  }
+  
+  .help-overlay {
+    bottom: 10px;
+    right: 10px;
+    padding: 10px 15px;
+  }
+  
+  .help-text span {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls-overlay {
+    padding: 15px;
+  }
+  
+  .info-overlay {
+    padding: 15px;
+  }
+  
+  .stream-info h2 {
+    font-size: 1.1rem;
+  }
+  
+  .current-time {
+    font-size: 1.2rem;
+  }
+  
+  .play-pause-button {
+    font-size: 1.5rem;
+    padding: 15px;
+    width: 50px;
+    height: 50px;
+  }
+  
+  .back-button,
+  .info-button,
+  .mute-button {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+  
+  .volume-control {
+    padding: 8px 15px;
+  }
+  
+  .volume-bar {
+    width: 60px;
+  }
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.info-overlay {
+  animation: slideInFromTop 0.3s ease;
+}
+
+.controls-overlay {
+  animation: fadeIn 0.3s ease;
+}
+
+.help-overlay {
+  animation: slideInFromBottom 0.3s ease;
+}
+
+/* Estados especiais */
+.video-player-container:fullscreen {
+  background: #000;
+}
+
+.video-player-container:fullscreen .video-element {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Loading animation para o spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Efeito de pulse para indicar gravação/ao vivo */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 140, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 140, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 140, 0, 0);
+  }
+}
+
+.status:not(.error-status) {
+  animation: pulse 2s infinite;
+} 

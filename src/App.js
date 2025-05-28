@@ -3,6 +3,11 @@ import './App.css';
 import LoginScreen from './components/LoginScreen';
 import Home from './components/Home';
 import Sidebar from './components/Sidebar';
+import Channels from './components/Channels';
+import Movies from './components/Movies';
+import Series from './components/Series';
+import Search from './components/Search';
+import VideoPlayer from './components/VideoPlayer';
 
 // Estado das seções (migrado do conceito original)
 const SECTIONS = {
@@ -11,7 +16,8 @@ const SECTIONS = {
   CHANNELS: 'channels', 
   MOVIES: 'movies',
   SERIES: 'series',
-  SEARCH: 'search'
+  SEARCH: 'search',
+  PLAYER: 'player'
 };
 
 // Menu items (do app antigo)
@@ -29,6 +35,12 @@ function App() {
   const [shelfFocus, setShelfFocus] = useState(0);
   const [itemFocus, setItemFocus] = useState(0);
   const [onMenu, setOnMenu] = useState(false);
+
+  // Estados do VideoPlayer
+  const [playerData, setPlayerData] = useState({
+    streamUrl: '',
+    streamInfo: null
+  });
 
   // Registrar teclas do controle remoto Tizen (mantido do template original)
   useEffect(() => {
@@ -52,6 +64,15 @@ function App() {
         if (keyCode === 13) { // Enter
           handleLogin();
         }
+        return;
+      }
+
+      // Se estiver no player, delegar navegação específica
+      if (currentSection === SECTIONS.PLAYER) {
+        const playerEvent = new CustomEvent('playerNavigation', {
+          detail: { keyCode }
+        });
+        window.dispatchEvent(playerEvent);
         return;
       }
 
@@ -91,6 +112,54 @@ function App() {
             console.log('Item selecionado:', { shelfFocus, itemFocus });
             // TODO: Implementar seleção de item
           }
+        } else if (currentSection === SECTIONS.CHANNELS) {
+          // Navegação específica para canais
+          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
+            setOnMenu(true);
+          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13) {
+            // Delegar navegação para o componente Channels através de eventos customizados
+            const channelsEvent = new CustomEvent('channelsNavigation', {
+              detail: { keyCode }
+            });
+            window.dispatchEvent(channelsEvent);
+          }
+        } else if (currentSection === SECTIONS.MOVIES) {
+          // Navegação específica para filmes
+          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
+            setOnMenu(true);
+          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13 || keyCode === 73) {
+            // Delegar navegação para o componente Movies através de eventos customizados
+            // keyCode 73 = Tecla 'I' para preview
+            const moviesEvent = new CustomEvent('moviesNavigation', {
+              detail: { keyCode }
+            });
+            window.dispatchEvent(moviesEvent);
+          }
+        } else if (currentSection === SECTIONS.SERIES) {
+          // Navegação específica para séries
+          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
+            setOnMenu(true);
+          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13 || keyCode === 73 || keyCode === 80) {
+            // Delegar navegação para o componente Series através de eventos customizados
+            // keyCode 13 = ENTER para abrir tela de detalhes
+            // keyCode 73 = Tecla 'I' para preview/detalhes
+            // keyCode 80 = Tecla 'P' para reproduzir diretamente
+            const seriesEvent = new CustomEvent('seriesNavigation', {
+              detail: { keyCode }
+            });
+            window.dispatchEvent(seriesEvent);
+          }
+        } else if (currentSection === SECTIONS.SEARCH) {
+          // Navegação específica para busca
+          if (keyCode === 37) { // Esquerda - voltar ao menu (apenas se não estiver digitando)
+            setOnMenu(true);
+          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13) {
+            // Delegar navegação para o componente Search através de eventos customizados
+            const searchEvent = new CustomEvent('searchNavigation', {
+              detail: { keyCode }
+            });
+            window.dispatchEvent(searchEvent);
+          }
         } else {
           // Para outras seções, apenas navegação básica
           if (keyCode === 37) { // Esquerda - voltar ao menu
@@ -101,7 +170,10 @@ function App() {
 
       // Botões especiais (mantidos)
       if (keyCode === 10009 || keyCode === 8) { // Return/Back
-        if (currentSection !== SECTIONS.HOME) {
+        if (currentSection === SECTIONS.PLAYER) {
+          // Voltar do player para a seção anterior
+          handleBackFromPlayer();
+        } else if (currentSection !== SECTIONS.HOME) {
           setCurrentSection(SECTIONS.HOME);
           setOnMenu(false);
         }
@@ -111,6 +183,18 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSection, onMenu, menuFocus, shelfFocus, itemFocus]);
+
+  // Listener para eventos de reprodução de conteúdo
+  useEffect(() => {
+    const handlePlayContent = (event) => {
+      const { streamUrl, streamInfo } = event.detail;
+      setPlayerData({ streamUrl, streamInfo });
+      setCurrentSection(SECTIONS.PLAYER);
+    };
+
+    window.addEventListener('playContent', handlePlayContent);
+    return () => window.removeEventListener('playContent', handlePlayContent);
+  }, []);
 
   const handleLogin = () => {
     setCurrentSection(SECTIONS.HOME);
@@ -122,6 +206,12 @@ function App() {
     setOnMenu(false);
     setShelfFocus(0);
     setItemFocus(0);
+  };
+
+  const handleBackFromPlayer = () => {
+    // Voltar para a última seção que não seja o player
+    setCurrentSection(SECTIONS.HOME);
+    setPlayerData({ streamUrl: '', streamInfo: null });
   };
 
   const renderCurrentSection = () => {
@@ -136,6 +226,28 @@ function App() {
             menuFocus={menuFocus}
             shelfFocus={shelfFocus}
             itemFocus={itemFocus}
+          />
+        );
+
+      case SECTIONS.CHANNELS:
+        return <Channels isActive={currentSection === SECTIONS.CHANNELS} />;
+
+      case SECTIONS.MOVIES:
+        return <Movies isActive={currentSection === SECTIONS.MOVIES} />;
+
+      case SECTIONS.SERIES:
+        return <Series isActive={currentSection === SECTIONS.SERIES} />;
+
+      case SECTIONS.SEARCH:
+        return <Search isActive={currentSection === SECTIONS.SEARCH} />;
+
+      case SECTIONS.PLAYER:
+        return (
+          <VideoPlayer 
+            isActive={currentSection === SECTIONS.PLAYER}
+            streamUrl={playerData.streamUrl}
+            streamInfo={playerData.streamInfo}
+            onBack={handleBackFromPlayer}
           />
         );
 
@@ -161,8 +273,8 @@ function App() {
     }
   };
 
-  // Não mostrar sidebar na tela de login
-  const showSidebar = currentSection !== SECTIONS.LOGIN;
+  // Não mostrar sidebar na tela de login ou no player
+  const showSidebar = currentSection !== SECTIONS.LOGIN && currentSection !== SECTIONS.PLAYER;
 
   return (
     <div className="App">
