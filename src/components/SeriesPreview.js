@@ -160,14 +160,16 @@ const SeriesPreview = ({ series, isVisible, onClose }) => {
   const playEpisode = (episode) => {
     const playEvent = new CustomEvent('playContent', {
       detail: {
-        name: `${series.name} - S${String(selectedSeason).padStart(2, '0')}E${String(episode.episode_num || 1).padStart(2, '0')} - ${episode.title || episode.name || 'Episódio'}`,
-        url: `https://rota66.bar/series/zBB82J/AMeDHq/${episode.id || episode.stream_id}.mp4`,
-        type: 'series',
-        category: series.category_name || 'Série',
-        description: episode.plot || episode.info || series.plot || 'Descrição não disponível',
-        year: series.releasedate || 'N/A',
-        rating: series.rating || episode.rating || 'N/A',
-        poster: series.cover || series.stream_icon
+        streamUrl: `https://rota66.bar/series/zBB82J/AMeDHq/${episode.id || episode.stream_id}.mp4`,
+        streamInfo: {
+          name: `${series.name} - S${String(selectedSeason).padStart(2, '0')}E${String(episode.episode_num || 1).padStart(2, '0')} - ${episode.title || episode.name || 'Episódio'}`,
+          type: 'series',
+          category: series.category_name || 'Série',
+          description: episode.plot || episode.info || series.plot || 'Descrição não disponível',
+          year: series.releasedate || 'N/A',
+          rating: series.rating || episode.rating || 'N/A',
+          poster: series.cover || series.stream_icon
+        }
       }
     });
     window.dispatchEvent(playEvent);

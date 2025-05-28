@@ -78,6 +78,9 @@ const Channels = ({ isActive }) => {
       setCategoryFocus(prev => (prev > 0 ? prev - 1 : categories.length - 1));
     } else if (keyCode === 40) { // Baixo
       setCategoryFocus(prev => (prev < categories.length - 1 ? prev + 1 : 0));
+    } else if (keyCode === 37) { // Esquerda - voltar para sidebar
+      const backEvent = new CustomEvent('backToSidebar');
+      window.dispatchEvent(backEvent);
     } else if (keyCode === 39) { // Direita - ir para canais
       if (channels.length > 0) {
         setFocusArea('channels');

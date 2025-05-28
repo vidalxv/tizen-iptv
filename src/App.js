@@ -113,10 +113,8 @@ function App() {
             // TODO: Implementar seleção de item
           }
         } else if (currentSection === SECTIONS.CHANNELS) {
-          // Navegação específica para canais
-          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13) {
+          // Navegação específica para canais - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13) {
             // Delegar navegação para o componente Channels através de eventos customizados
             const channelsEvent = new CustomEvent('channelsNavigation', {
               detail: { keyCode }
@@ -124,10 +122,8 @@ function App() {
             window.dispatchEvent(channelsEvent);
           }
         } else if (currentSection === SECTIONS.MOVIES) {
-          // Navegação específica para filmes
-          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13 || keyCode === 73) {
+          // Navegação específica para filmes - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13 || keyCode === 73) {
             // Delegar navegação para o componente Movies através de eventos customizados
             // keyCode 73 = Tecla 'I' para preview
             const moviesEvent = new CustomEvent('moviesNavigation', {
@@ -136,10 +132,8 @@ function App() {
             window.dispatchEvent(moviesEvent);
           }
         } else if (currentSection === SECTIONS.SERIES) {
-          // Navegação específica para séries
-          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13 || keyCode === 73 || keyCode === 80) {
+          // Navegação específica para séries - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13 || keyCode === 73 || keyCode === 80) {
             // Delegar navegação para o componente Series através de eventos customizados
             // keyCode 13 = ENTER para abrir tela de detalhes
             // keyCode 73 = Tecla 'I' para preview/detalhes
@@ -150,10 +144,8 @@ function App() {
             window.dispatchEvent(seriesEvent);
           }
         } else if (currentSection === SECTIONS.SEARCH) {
-          // Navegação específica para busca
-          if (keyCode === 37) { // Esquerda - voltar ao menu (apenas se não estiver digitando)
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13) {
+          // Navegação específica para busca - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13) {
             // Delegar navegação para o componente Search através de eventos customizados
             const searchEvent = new CustomEvent('searchNavigation', {
               detail: { keyCode }
@@ -194,6 +186,16 @@ function App() {
 
     window.addEventListener('playContent', handlePlayContent);
     return () => window.removeEventListener('playContent', handlePlayContent);
+  }, []);
+
+  // Listener para evento de volta à sidebar
+  useEffect(() => {
+    const handleBackToSidebar = () => {
+      setOnMenu(true);
+    };
+
+    window.addEventListener('backToSidebar', handleBackToSidebar);
+    return () => window.removeEventListener('backToSidebar', handleBackToSidebar);
   }, []);
 
   const handleLogin = () => {

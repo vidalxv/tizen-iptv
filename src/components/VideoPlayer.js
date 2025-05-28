@@ -97,84 +97,81 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
     setError(null);
 
     try {
-      // Verificar se mpegts.js é suportado
-      if (!mpegts.isSupported()) {
-        throw new Error('Seu navegador não suporta reprodução de streams MPEG-TS');
-      }
-
       // Destruir player anterior se existir
       destroyPlayer();
 
-      // Criar novo player
-      const player = mpegts.createPlayer({
-        type: 'mse',
-        isLive: true,
-        url: streamUrl
-      }, {
-        enableWorker: false,
-        lazyLoadMaxDuration: 3 * 60,
-        liveBufferLatencyChasing: true,
-        liveSync: true
-      });
+      // Determinar se é um stream ao vivo ou vídeo on-demand
+      const isLiveStream = streamUrl.includes('.ts');
+      const isVideoFile = streamUrl.includes('.mp4') || streamUrl.includes('.m3u8');
 
-      // Event listeners
-      player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-        console.error('Player error:', errorType, errorDetail, errorInfo);
-        setError('Erro ao reproduzir stream. Verifique a conexão.');
-        setIsLoading(false);
-      });
+      if (isLiveStream) {
+        // Para streams .ts (canais ao vivo), usar mpegts.js
+        if (!mpegts.isSupported()) {
+          throw new Error('Seu navegador não suporta reprodução de streams MPEG-TS');
+        }
 
-      player.on(mpegts.Events.LOADING_COMPLETE, () => {
-        setIsLoading(false);
-      });
+        const player = mpegts.createPlayer({
+          type: 'mse',
+          isLive: true,
+          url: streamUrl
+        }, {
+          enableWorker: false,
+          lazyLoadMaxDuration: 3 * 60,
+          liveBufferLatencyChasing: true,
+          liveSync: true
+        });
 
-      player.on(mpegts.Events.MEDIA_INFO, (mediaInfo) => {
-        console.log('Media info:', mediaInfo);
-      });
-
-      // Anexar ao elemento video
-      player.attachMediaElement(videoRef.current);
-      player.load();
-
-      // Salvar referência
-      playerRef.current = player;
-
-      // Event listeners do elemento video
-      const videoElement = videoRef.current;
-      
-      videoElement.addEventListener('loadstart', () => {
-        setIsLoading(true);
-      });
-
-      videoElement.addEventListener('canplay', () => {
-        setIsLoading(false);
-        // Auto-play
-        videoElement.play().then(() => {
-          setIsPlaying(true);
-        }).catch(err => {
-          console.error('Auto-play failed:', err);
+        // Event listeners do mpegts.js
+        player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+          console.error('Player error:', errorType, errorDetail, errorInfo);
+          setError('Erro ao reproduzir stream. Verifique a conexão.');
           setIsLoading(false);
         });
-      });
 
-      videoElement.addEventListener('playing', () => {
-        setIsPlaying(true);
-        setIsLoading(false);
-      });
+        player.on(mpegts.Events.LOADING_COMPLETE, () => {
+          setIsLoading(false);
+        });
 
-      videoElement.addEventListener('pause', () => {
-        setIsPlaying(false);
-      });
+        player.on(mpegts.Events.MEDIA_INFO, (mediaInfo) => {
+          console.log('Media info:', mediaInfo);
+        });
 
-      videoElement.addEventListener('ended', () => {
-        setIsPlaying(false);
-      });
+        // Anexar ao elemento video
+        player.attachMediaElement(videoRef.current);
+        player.load();
 
-      videoElement.addEventListener('error', (e) => {
-        console.error('Video error:', e);
-        setError('Erro ao reproduzir vídeo');
-        setIsLoading(false);
-      });
+        // Salvar referência
+        playerRef.current = player;
+      } else if (isVideoFile) {
+        // Para arquivos de vídeo (.mp4), usar elemento video nativo
+        const videoElement = videoRef.current;
+        videoElement.src = streamUrl;
+        videoElement.load();
+        
+        // Não salvar referência do player para vídeos nativos
+        playerRef.current = null;
+      } else {
+        throw new Error('Formato de stream não suportado');
+      }
+
+      // Event listeners do elemento video (aplicados em ambos os casos)
+      const videoElement = videoRef.current;
+      
+      // Remover listeners antigos
+      videoElement.removeEventListener('loadstart', handleLoadStart);
+      videoElement.removeEventListener('canplay', handleCanPlay);
+      videoElement.removeEventListener('playing', handlePlaying);
+      videoElement.removeEventListener('pause', handlePause);
+      videoElement.removeEventListener('ended', handleEnded);
+      videoElement.removeEventListener('error', handleVideoError);
+      
+      // Adicionar listeners
+      videoElement.addEventListener('loadstart', handleLoadStart);
+      videoElement.addEventListener('canplay', handleCanPlay);
+      videoElement.addEventListener('playing', handlePlaying);
+      videoElement.addEventListener('pause', handlePause);
+      videoElement.addEventListener('ended', handleEnded);
+      videoElement.addEventListener('error', handleVideoError);
 
     } catch (err) {
       console.error('Failed to initialize player:', err);
@@ -183,16 +180,66 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
     }
   };
 
+  // Handlers para eventos do vídeo
+  const handleLoadStart = () => {
+    setIsLoading(true);
+  };
+
+  const handleCanPlay = () => {
+    setIsLoading(false);
+    // Auto-play
+    if (videoRef.current) {
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(err => {
+        console.error('Auto-play failed:', err);
+        setIsLoading(false);
+      });
+    }
+  };
+
+  const handlePlaying = () => {
+    setIsPlaying(true);
+    setIsLoading(false);
+  };
+
+  const handlePause = () => {
+    setIsPlaying(false);
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+  };
+
+  const handleVideoError = (e) => {
+    console.error('Video error:', e);
+    setError('Erro ao reproduzir vídeo');
+    setIsLoading(false);
+  };
+
   const destroyPlayer = () => {
+    // Remover listeners do elemento video
+    if (videoRef.current) {
+      const videoElement = videoRef.current;
+      videoElement.removeEventListener('loadstart', handleLoadStart);
+      videoElement.removeEventListener('canplay', handleCanPlay);
+      videoElement.removeEventListener('playing', handlePlaying);
+      videoElement.removeEventListener('pause', handlePause);
+      videoElement.removeEventListener('ended', handleEnded);
+      videoElement.removeEventListener('error', handleVideoError);
+    }
+
+    // Destruir player mpegts.js se existir
     if (playerRef.current) {
       try {
         playerRef.current.pause();
         playerRef.current.unload();
         playerRef.current.detachMediaElement();
         playerRef.current.destroy();
-        playerRef.current = null;
       } catch (err) {
         console.error('Error destroying player:', err);
+      } finally {
+        playerRef.current = null;
       }
     }
     
