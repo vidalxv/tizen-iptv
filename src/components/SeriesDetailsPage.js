@@ -8,18 +8,17 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
   const [episodes, setEpisodes] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(0);
-  const [focusArea, setFocusArea] = useState('actions'); // 'actions', 'tabs', 'seasons', 'episodes'
+  const [focusArea, setFocusArea] = useState('actions');
   const [seasonFocus, setSeasonFocus] = useState(0);
   const [episodeFocus, setEpisodeFocus] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [synopsisExpanded, setSynopsisExpanded] = useState(false);
-  const [episodesAreaExpanded, setEpisodesAreaExpanded] = useState(false); // Novo estado para controlar expansão
+  const [episodesAreaExpanded, setEpisodesAreaExpanded] = useState(false);
 
   // Referencias para navegação com foco
   const actionButtonsRef = useRef([]);
   const seasonElementsRef = useRef([]);
   const episodeElementsRef = useRef([]);
-  const autoLoadTimeoutRef = useRef(null); // Ref para controlar timeout do carregamento automático
+  const autoLoadTimeoutRef = useRef(null);
 
   // Memoizar actionElements para evitar recriação a cada render
   const actionElements = useMemo(() => ['play', 'favorite'], []);
@@ -27,64 +26,50 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
   const API_BASE_URL = 'https://rota66.bar/player_api.php';
   const API_CREDENTIALS = 'username=zBB82J&password=AMeDHq';
 
-  // Mover loadEpisodes antes de selectSeason para resolver dependência
+  // Função otimizada para carregar episódios
   const loadEpisodes = useCallback(async (seasonNumber) => {
-    console.log('📥 loadEpisodes chamada para temporada:', seasonNumber);
-    
     try {
       setLoading(true);
-      console.log('🌐 Fazendo requisição para API...');
       
       const response = await fetch(
         `${API_BASE_URL}?${API_CREDENTIALS}&action=get_series_info&series_id=${series.series_id}`
       );
       const data = await response.json();
       
-      console.log('📊 Dados recebidos da API:', data);
-      
       if (data.episodes && data.episodes[seasonNumber]) {
-        console.log('✅ Episódios encontrados para temporada', seasonNumber, ':', data.episodes[seasonNumber].length);
         setEpisodes(data.episodes[seasonNumber]);
         setSelectedEpisode(0);
         setEpisodeFocus(0);
-        // Automaticamente expandir e navegar para a área de episódios após carregar
+        // Expandir área de episódios automaticamente
         setEpisodesAreaExpanded(true);
-        setTimeout(() => {
+        // Usar requestAnimationFrame para melhor performance
+        requestAnimationFrame(() => {
           setFocusArea('episodes');
-        }, 100); // Pequeno delay para garantir que os episódios foram renderizados
+        });
       } else {
-        console.log('⚠️ Nenhum episódio encontrado para temporada:', seasonNumber);
         setEpisodes([]);
-        // Mesmo sem episódios, permitir navegação para área de episódios
         setEpisodesAreaExpanded(true);
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           setFocusArea('episodes');
-        }, 100);
+        });
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar episódios:', error);
+      console.error('Erro ao carregar episódios:', error);
       setEpisodes([]);
-      // Em caso de erro, ainda permitir navegação
       setEpisodesAreaExpanded(true);
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         setFocusArea('episodes');
-      }, 100);
+      });
     } finally {
-      console.log('🏁 Finalizando carregamento de episódios');
       setLoading(false);
     }
   }, [series.series_id, API_BASE_URL, API_CREDENTIALS]);
 
   const selectSeason = useCallback((seasonNumber) => {
-    console.log('🎯 selectSeason chamada com temporada:', seasonNumber, 'atual:', selectedSeason);
-    
     // Evitar carregamento desnecessário se a temporada já estiver selecionada
     if (selectedSeason === seasonNumber) {
-      console.log('⚠️ Temporada já selecionada, pulando carregamento');
       return;
     }
-    
-    console.log('✅ Iniciando carregamento da temporada:', seasonNumber);
     
     // Limpar timeout anterior se existir
     if (autoLoadTimeoutRef.current) {
@@ -97,17 +82,16 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
     loadEpisodes(seasonNumber);
   }, [selectedSeason, seasons, loadEpisodes]);
 
-  // Funções de navegação refatoradas com useCallback
+  // Funções de navegação otimizadas
   const handleUpNavigation = useCallback(() => {
     if (focusArea === 'episodes') {
-      // Na área de episódios (carrossel), seta para cima vai para temporadas ou ações
       if (seasons.length > 0) {
         setFocusArea('seasons');
         setSeasonFocus(seasonFocus);
       } else {
         setFocusArea('actions');
         setFocusedElement('play');
-        setEpisodesAreaExpanded(false); // Recolher área ao sair dos episódios
+        setEpisodesAreaExpanded(false);
       }
     } else if (focusArea === 'seasons') {
       if (seasonFocus > 0) {
@@ -115,32 +99,25 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
       } else {
         setFocusArea('actions');
         setFocusedElement('play');
-        setEpisodesAreaExpanded(false); // Recolher área ao sair das temporadas
+        setEpisodesAreaExpanded(false);
       }
-    } else if (focusArea === 'actions') {
-      // Já no topo, não faz nada
     }
   }, [focusArea, seasons.length, seasonFocus]);
 
   const handleDownNavigation = useCallback(() => {
     if (focusArea === 'actions') {
-      // Ir direto para temporadas ou episódios, pulando as abas
       if (seasons.length > 0) {
         setFocusArea('seasons');
         setSeasonFocus(0);
-        setEpisodesAreaExpanded(true); // Expandir área ao navegar para baixo
+        setEpisodesAreaExpanded(true);
       } else {
         setFocusArea('episodes');
         setEpisodeFocus(0);
-        setEpisodesAreaExpanded(true); // Expandir área ao navegar para baixo
+        setEpisodesAreaExpanded(true);
       }
     } else if (focusArea === 'seasons') {
-      // Sempre permitir navegar para episódios, independente se há episódios carregados
       setFocusArea('episodes');
       setEpisodeFocus(0);
-    } else if (focusArea === 'episodes') {
-      // No carrossel horizontal, seta para baixo não faz nada (sem navegação vertical)
-      // Mantém o foco no episódio atual
     }
   }, [focusArea, seasons.length]);
 
@@ -159,26 +136,22 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
           clearTimeout(autoLoadTimeoutRef.current);
         }
         
-        // Carregamento imediato - removido delay para debug
+        // Carregamento imediato da temporada
         const season = seasons[newSeasonFocus];
         if (season) {
-          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
           selectSeason(season.season_number);
         }
       } else {
-        // Ir para a última temporada (navegação circular)
+        // Navegação circular para a última temporada
         const newSeasonFocus = seasons.length - 1;
         setSeasonFocus(newSeasonFocus);
         
-        // Cancelar timeout anterior se existir
         if (autoLoadTimeoutRef.current) {
           clearTimeout(autoLoadTimeoutRef.current);
         }
         
-        // Carregamento imediato - removido delay para debug
         const season = seasons[newSeasonFocus];
         if (season) {
-          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
           selectSeason(season.season_number);
         }
       }
@@ -188,8 +161,8 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
         const newFocus = episodeFocus - 1;
         setEpisodeFocus(newFocus);
         
-        // Scroll automático para o episódio focado
-        setTimeout(() => {
+        // Scroll otimizado usando requestAnimationFrame
+        requestAnimationFrame(() => {
           if (episodeElementsRef.current[newFocus]) {
             episodeElementsRef.current[newFocus].scrollIntoView({ 
               behavior: 'smooth', 
@@ -197,7 +170,7 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
               inline: 'center'
             });
           }
-        }, 50);
+        });
       }
     }
   }, [focusArea, focusedElement, seasonFocus, seasons, episodeFocus, actionElements, selectSeason]);
@@ -212,31 +185,25 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
         const newSeasonFocus = seasonFocus + 1;
         setSeasonFocus(newSeasonFocus);
         
-        // Cancelar timeout anterior se existir
         if (autoLoadTimeoutRef.current) {
           clearTimeout(autoLoadTimeoutRef.current);
         }
         
-        // Carregamento imediato - removido delay para debug
         const season = seasons[newSeasonFocus];
         if (season) {
-          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
           selectSeason(season.season_number);
         }
       } else {
-        // Ir para a primeira temporada (navegação circular)
+        // Navegação circular para a primeira temporada
         const newSeasonFocus = 0;
         setSeasonFocus(newSeasonFocus);
         
-        // Cancelar timeout anterior se existir
         if (autoLoadTimeoutRef.current) {
           clearTimeout(autoLoadTimeoutRef.current);
         }
         
-        // Carregamento imediato - removido delay para debug
         const season = seasons[newSeasonFocus];
         if (season) {
-          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
           selectSeason(season.season_number);
         }
       }
@@ -246,8 +213,8 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
         const newFocus = episodeFocus + 1;
         setEpisodeFocus(newFocus);
         
-        // Scroll automático para o episódio focado
-        setTimeout(() => {
+        // Scroll otimizado usando requestAnimationFrame
+        requestAnimationFrame(() => {
           if (episodeElementsRef.current[newFocus]) {
             episodeElementsRef.current[newFocus].scrollIntoView({ 
               behavior: 'smooth', 
@@ -255,7 +222,7 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
               inline: 'center'
             });
           }
-        }, 50);
+        });
       }
     }
   }, [focusArea, focusedElement, seasonFocus, seasons, episodeFocus, episodes.length, actionElements, selectSeason]);
@@ -324,7 +291,7 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
     setIsFavorite(!isFavorite);
   }, [series, isFavorite]);
 
-  // Função de ação refatorada com useCallback
+  // Função de ação otimizada
   const handleAction = useCallback(() => {
     if (focusArea === 'actions') {
       switch (focusedElement) {
@@ -345,15 +312,13 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
       const episode = episodes[episodeFocus];
       setSelectedEpisode(episodeFocus);
       playEpisode(episode);
-    } else if (focusArea === 'episodes' && episodes.length === 0) {
-      console.log('Nenhum episódio disponível para esta temporada');
     }
   }, [focusArea, focusedElement, episodes, episodeFocus, selectedEpisode, playEpisode, loadFirstEpisode, toggleFavorite]);
 
   // Função para lidar com o botão voltar
   const handleBackNavigation = useCallback(() => {
     if (episodesAreaExpanded && (focusArea === 'episodes' || focusArea === 'seasons')) {
-      // Se a área de episódios está expandida e estamos nela, apenas encolher
+      // Se a área de episódios está expandida, apenas encolher
       setEpisodesAreaExpanded(false);
       setFocusArea('actions');
       setFocusedElement('play');
@@ -393,42 +358,46 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
     }
   }, [series?.series_id, API_BASE_URL, API_CREDENTIALS]);
 
-  // Função para atualizar foco visual e scroll automático
+  // Função otimizada para atualizar foco visual
   const updateFocusVisual = useCallback(() => {
-    // Remover foco de todos os elementos
-    document.querySelectorAll('.primary-action-btn, .secondary-action-btn, .season-number-item, .episode-card-new').forEach(el => {
-      el.classList.remove('focused');
-    });
+    // Usar requestAnimationFrame para melhor performance
+    requestAnimationFrame(() => {
+      // Remover foco de todos os elementos
+      document.querySelectorAll('.primary-action-btn, .secondary-action-btn, .season-number-item, .episode-card-new').forEach(el => {
+        el.classList.remove('focused');
+      });
 
-    // Adicionar foco ao elemento atual e fazer scroll
-    if (focusArea === 'actions') {
-      const buttonIndex = actionElements.indexOf(focusedElement);
-      if (actionButtonsRef.current[buttonIndex]) {
-        actionButtonsRef.current[buttonIndex].classList.add('focused');
-        actionButtonsRef.current[buttonIndex].scrollIntoView({ 
+      // Adicionar foco ao elemento atual
+      if (focusArea === 'actions') {
+        const buttonIndex = actionElements.indexOf(focusedElement);
+        if (actionButtonsRef.current[buttonIndex]) {
+          actionButtonsRef.current[buttonIndex].classList.add('focused');
+          // Scroll suave otimizado
+          actionButtonsRef.current[buttonIndex].scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        }
+      } else if (focusArea === 'seasons' && seasonElementsRef.current[seasonFocus]) {
+        seasonElementsRef.current[seasonFocus].classList.add('focused');
+        seasonElementsRef.current[seasonFocus].scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'nearest',
+          inline: 'nearest'
+        });
+      } else if (focusArea === 'episodes' && episodeElementsRef.current[episodeFocus]) {
+        episodeElementsRef.current[episodeFocus].classList.add('focused');
+        episodeElementsRef.current[episodeFocus].scrollIntoView({ 
           behavior: 'smooth', 
           block: 'nearest',
           inline: 'nearest'
         });
       }
-    } else if (focusArea === 'seasons' && seasonElementsRef.current[seasonFocus]) {
-      seasonElementsRef.current[seasonFocus].classList.add('focused');
-      seasonElementsRef.current[seasonFocus].scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'nearest',
-        inline: 'nearest'
-      });
-    } else if (focusArea === 'episodes' && episodeElementsRef.current[episodeFocus]) {
-      episodeElementsRef.current[episodeFocus].classList.add('focused');
-      episodeElementsRef.current[episodeFocus].scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'nearest',
-        inline: 'nearest'
-      });
-    }
+    });
   }, [focusArea, focusedElement, seasonFocus, episodeFocus, actionElements]);
 
-  // useEffect para atualizar foco visual sempre que a navegação mudar
+  // useEffect para atualizar foco visual
   useEffect(() => {
     updateFocusVisual();
   }, [updateFocusVisual]);
@@ -450,63 +419,63 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
     loadSeriesInfo();
   }, [isActive, series, loadSeriesInfo]);
 
-  // useEffect para NAVEGAÇÃO - separado da inicialização
+  // useEffect para NAVEGAÇÃO - otimizado
   useEffect(() => {
     if (!isActive || !series) return;
 
+    // Criar uma referência local do timeout para o cleanup
+    const currentTimeoutRef = autoLoadTimeoutRef.current;
+
     const handleKeyDown = (event) => {
+      // Prevenir comportamento padrão para melhor performance
+      event.preventDefault();
+      
       switch (event.key) {
         case 'ArrowUp':
-          event.preventDefault();
           handleUpNavigation();
           break;
         
         case 'ArrowDown':
-          event.preventDefault();
           handleDownNavigation();
           break;
         
         case 'ArrowLeft':
-          event.preventDefault();
           handleLeftNavigation();
           break;
         
         case 'ArrowRight':
-          event.preventDefault();
           handleRightNavigation();
           break;
         
         case 'Enter':
         case ' ':
-          event.preventDefault();
           handleAction();
           break;
         
         case 'Escape':
         case 'Backspace':
-          event.preventDefault();
-          handleBackNavigation(); // Usar nova função de navegação de volta
+          handleBackNavigation();
           break;
         
         default:
-          break;
+          // Permitir comportamento padrão para outras teclas
+          return;
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, { passive: false });
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      // Limpar timeout ao desmontar componente
-      if (autoLoadTimeoutRef.current) {
-        clearTimeout(autoLoadTimeoutRef.current);
+      // Limpar timeout ao desmontar componente usando a referência local
+      if (currentTimeoutRef) {
+        clearTimeout(currentTimeoutRef);
       }
     };
-    // DEPENDÊNCIAS APENAS DA NAVEGAÇÃO - sem loadSeriesInfo
   }, [
     isActive,
     series,
-    handleBackNavigation, // Atualizar dependência
+    handleBackNavigation,
     handleUpNavigation,
     handleDownNavigation, 
     handleLeftNavigation,
@@ -518,26 +487,10 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
 
   return (
     <div className="series-details-page">
-      {/* Indicador de Navegação */}
-      <div className="navigation-indicator">
-        <div className="nav-indicator-content">
-          <span className="nav-area-label">
-            {focusArea === 'actions' && 'Ações'}
-            {focusArea === 'seasons' && 'Temporadas'}
-            {focusArea === 'episodes' && 'Episódios'}
-          </span>
-          <div className="nav-help">
-            <span>↑↓←→ Navegar</span>
-            <span>ENTER Selecionar</span>
-            <span>VOLTAR {episodesAreaExpanded && (focusArea === 'episodes' || focusArea === 'seasons') ? 'Encolher' : 'Sair'}</span>
-          </div>
-        </div>
-      </div>
-
       {/* Layout Principal */}
       <div className={`series-main-layout ${episodesAreaExpanded ? 'episodes-focused' : ''}`}>
         {/* Painel de Informações (Esquerda) */}
-        <div className="series-info-panel">
+        <div className={`series-info-panel ${episodes.length > 0 ? 'has-episodes' : ''}`}>
           <div className="series-header-info">
             {/* Logo do Provedor */}
             <img 
@@ -553,7 +506,9 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
             </div>
             
             {/* Título da Série */}
-            <h1 className="series-title-main">{series.name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+              <h1 className="series-title-main">{series.name}</h1>
+            </div>
             
             {/* Meta Informações */}
             <div className="series-meta-info">
@@ -564,21 +519,15 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
               <div className="meta-item season-count">
                 <i className="fas fa-list"></i>
                 <span>{seasons.length} Temporadas</span>
-              </div>
+              </div>  
             </div>
           </div>
           
           {/* Sinopse */}
           <div className="series-synopsis">
-            <p className={`synopsis-text ${synopsisExpanded ? 'expanded' : ''}`}>
+            <p className="synopsis-text expanded">
               {series.plot || 'Descrição não disponível para esta série.'}
             </p>
-            <span 
-              className="synopsis-more"
-              onClick={() => setSynopsisExpanded(!synopsisExpanded)}
-            >
-              {synopsisExpanded ? 'Menos' : 'Mais'}
-            </span>
           </div>
           
           {/* Gêneros */}
@@ -614,6 +563,14 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
               {isFavorite ? 'Na Minha Lista' : 'Minha Lista'}
             </button>
           </div>
+
+          {/* Indicador de navegação integrado */}
+          {episodes.length > 0 && !episodesAreaExpanded && focusArea === 'actions' && (
+            <div className="episodes-navigation-hint">
+              <i className="fas fa-arrow-down"></i>
+              <span>Pressione ↓ para ver todos os episódios</span>
+            </div>
+          )}
         </div>
         
         {/* Arte Promocional (Direita) */}
@@ -632,18 +589,28 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
 
       {/* Nova Área de Episódios */}
       <div className={`series-episodes-area ${episodesAreaExpanded ? 'episodes-focused' : ''}`}>
-        {/* Conteúdo dos Episódios - Removida a barra de navegação */}
         <div className="tab-content active">
           <div className="episodes-tab-content">
             {loading && (
               <div className="loading">
-                <i className="fas fa-spinner fa-spin"></i>
+                <i className="fas fa-spinner"></i>
                 <span>Carregando informações da série...</span>
               </div>
             )}
             
             {!loading && (
               <>
+                {/* Cabeçalho da Seção de Episódios */}
+                <div className="episodes-section-header">
+                  <h2 className="episodes-section-title">Episódios</h2>
+                  <p className="episodes-section-subtitle">
+                    {episodes.length > 0 
+                      ? `Temporada ${selectedSeason} • ${episodes.length} episódio${episodes.length !== 1 ? 's' : ''}`
+                      : 'Carregando episódios...'
+                    }
+                  </p>
+                </div>
+
                 {/* Seletor de Temporadas */}
                 {seasons.length > 0 && (
                   <div className="season-selector-hbo">

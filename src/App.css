@@ -8,11 +8,16 @@
 
 /* Layout com sidebar */
 .app-content {
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-content.with-sidebar {
-  margin-left: 280px;
+  margin-left: 80px; /* Margem para sidebar collapsed */
+}
+
+/* Sobrepor o conteúdo quando sidebar estiver expandida */
+.sidebar.expanded ~ .app-content {
+  margin-left: 80px; /* Manter margem base, sidebar fica por cima */
 }
 
 /* Conteúdo principal */
@@ -140,7 +145,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .app-content.with-sidebar {
-    margin-left: 70px;
+    margin-left: 70px; /* Ajuste para telas menores */
   }
   
   .placeholder-content {
@@ -164,7 +169,7 @@
 
 @media (max-width: 480px) {
   .app-content.with-sidebar {
-    margin-left: 0;
+    margin-left: 0; /* Em telas muito pequenas, sidebar fica por cima */
   }
   
   .placeholder-content {

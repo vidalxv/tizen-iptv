@@ -15,7 +15,7 @@ const Sidebar = ({ currentSection, onMenu, menuFocus, onSectionChange }) => {
   };
 
   return (
-    <nav className="sidebar">
+    <nav className={`sidebar ${onMenu ? 'expanded' : 'collapsed'}`}>
       <div className="sidebar-logo">
         <img 
           src="/images/BIGTV-transparente.png" 
@@ -34,6 +34,7 @@ const Sidebar = ({ currentSection, onMenu, menuFocus, onSectionChange }) => {
               onMenu && menuFocus === idx ? 'focused' : ''
             }`}
             onClick={() => handleItemClick(item.id)}
+            data-tooltip={item.label}
           >
             <div className="menu-item-icon">
               <i className={`fa-solid ${item.icon}`}></i>
