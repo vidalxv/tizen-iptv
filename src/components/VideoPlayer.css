@@ -69,7 +69,7 @@
   text-align: center;
   color: white;
   max-width: 500px;
-  padding: 40px;
+  margin: 40px;
   background: rgba(20, 20, 20, 0.9);
   border-radius: 12px;
   border: 2px solid #dc3545;
@@ -99,7 +99,7 @@
   border: none;
   border-radius: 8px;
   color: white;
-  padding: 12px 24px;
+  margin: 12px 24px;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -121,7 +121,7 @@
   left: 20px;
   right: 20px;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
-  padding: 30px;
+  margin: 30px;
   border-radius: 12px;
   color: white;
   z-index: 5;
@@ -177,7 +177,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 20px;
+  margin: 20px;
   transition: opacity 0.3s ease;
 }
 
@@ -209,7 +209,7 @@
   border: 2px solid #FF8C00;
   border-radius: 50px;
   color: #FF8C00;
-  padding: 15px;
+  margin: 15px;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
@@ -229,7 +229,7 @@
 
 .play-pause-button {
   font-size: 3rem;
-  padding: 25px;
+  margin: 25px;
   width: 80px;
   height: 80px;
   justify-content: center;
@@ -247,7 +247,7 @@
   align-items: center;
   gap: 15px;
   background: rgba(20, 20, 20, 0.8);
-  padding: 10px 20px;
+  margin: 10px 20px;
   border-radius: 25px;
   backdrop-filter: blur(5px);
   border: 1px solid #333;
@@ -279,7 +279,7 @@
 /* Informações do Player */
 .player-info {
   background: rgba(20, 20, 20, 0.8);
-  padding: 10px 20px;
+  margin: 10px 20px;
   border-radius: 25px;
   backdrop-filter: blur(5px);
   border: 1px solid #333;
@@ -301,7 +301,7 @@
   bottom: 20px;
   right: 20px;
   background: rgba(20, 20, 20, 0.9);
-  padding: 15px 20px;
+  margin: 15px 20px;
   border-radius: 12px;
   backdrop-filter: blur(5px);
   border: 1px solid #333;
@@ -354,7 +354,7 @@
 
 @media (max-width: 768px) {
   .info-overlay {
-    padding: 20px;
+    margin: 20px;
   }
   
   .stream-info h2 {
@@ -368,7 +368,7 @@
   
   .play-pause-button {
     font-size: 2rem;
-    padding: 20px;
+    margin: 20px;
     width: 60px;
     height: 60px;
   }
@@ -380,7 +380,7 @@
   .help-overlay {
     bottom: 10px;
     right: 10px;
-    padding: 10px 15px;
+    margin: 10px 15px;
   }
   
   .help-text span {
@@ -390,11 +390,11 @@
 
 @media (max-width: 480px) {
   .controls-overlay {
-    padding: 15px;
+    margin: 15px;
   }
   
   .info-overlay {
-    padding: 15px;
+    margin: 15px;
   }
   
   .stream-info h2 {
@@ -407,7 +407,7 @@
   
   .play-pause-button {
     font-size: 1.5rem;
-    padding: 15px;
+    margin: 15px;
     width: 50px;
     height: 50px;
   }
@@ -415,12 +415,12 @@
   .back-button,
   .info-button,
   .mute-button {
-    padding: 10px;
+    margin: 10px;
     font-size: 0.9rem;
   }
   
   .volume-control {
-    padding: 8px 15px;
+    margin: 8px 15px;
   }
   
   .volume-bar {

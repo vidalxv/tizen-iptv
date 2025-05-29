@@ -74,78 +74,6 @@ const Series = ({ isActive }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  // Sistema de navegação por controle remoto
-  useEffect(() => {
-    if (!isActive) return;
-
-    const handleSeriesNavigation = (event) => {
-      const { keyCode } = event.detail;
-
-      if (focusArea === 'categories') {
-        if (keyCode === 38) { // Cima
-          setCategoryFocus(prev => Math.max(0, prev - 1));
-        } else if (keyCode === 40) { // Baixo
-          setCategoryFocus(prev => Math.min(categories.length - 1, prev + 1));
-        } else if (keyCode === 39) { // Direita - ir para séries
-          if (series.length > 0) {
-            setFocusArea('series');
-            setSeriesFocus(0);
-          }
-        } else if (keyCode === 13) { // Enter - selecionar categoria
-          const selectedCat = categories[categoryFocus];
-          if (selectedCat) {
-            setSelectedCategory(selectedCat.category_id);
-            loadSeries(selectedCat.category_id);
-          }
-        }
-      } else if (focusArea === 'series') {
-        const gridColumns = 5; // Assumindo 5 colunas no grid
-        const currentRow = Math.floor(seriesFocus / gridColumns);
-        const currentCol = seriesFocus % gridColumns;
-        const totalRows = Math.ceil(series.length / gridColumns);
-
-        if (keyCode === 38) { // Cima
-          if (currentRow > 0) {
-            const newFocus = Math.max(0, seriesFocus - gridColumns);
-            setSeriesFocus(newFocus);
-          } else {
-            // Voltar para categorias
-            setFocusArea('categories');
-          }
-        } else if (keyCode === 40) { // Baixo
-          if (currentRow < totalRows - 1) {
-            const newFocus = Math.min(series.length - 1, seriesFocus + gridColumns);
-            setSeriesFocus(newFocus);
-          }
-        } else if (keyCode === 37) { // Esquerda
-          if (currentCol > 0) {
-            setSeriesFocus(seriesFocus - 1);
-          } else {
-            // Voltar para categorias
-            setFocusArea('categories');
-          }
-        } else if (keyCode === 39) { // Direita
-          if (currentCol < gridColumns - 1 && seriesFocus < series.length - 1) {
-            setSeriesFocus(seriesFocus + 1);
-          }
-        } else if (keyCode === 13) { // Enter - abrir detalhes da série
-          const selectedSeries = series[seriesFocus];
-          if (selectedSeries) {
-            handleSeriesDetails(selectedSeries);
-          }
-        } else if (keyCode === 80) { // Tecla P - reproduzir diretamente
-          const selectedSeries = series[seriesFocus];
-          if (selectedSeries) {
-            handleSeriesSelect(selectedSeries);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('seriesNavigation', handleSeriesNavigation);
-    return () => window.removeEventListener('seriesNavigation', handleSeriesNavigation);
-  }, [isActive, focusArea, categoryFocus, seriesFocus, categories, series]);
-
   // Atualizar foco visual
   const updateFocusVisual = useCallback(() => {
     // Remover foco de todos os elementos
@@ -173,7 +101,8 @@ const Series = ({ isActive }) => {
     updateFocusVisual();
   }, [updateFocusVisual]);
 
-  const loadSeries = async (categoryId) => {
+  // Função para carregar séries de uma categoria
+  const loadSeries = useCallback(async (categoryId) => {
     setSeriesLoading(true);
     setSeriesFocus(0); // Reset series focus
     try {
@@ -193,10 +122,10 @@ const Series = ({ isActive }) => {
     } finally {
       setSeriesLoading(false);
     }
-  };
+  }, [API_BASE_URL, API_CREDENTIALS, focusArea]);
 
   // Função para navegar para detalhes da série
-  const handleSeriesDetails = (series) => {
+  const handleSeriesDetails = useCallback((series) => {
     const categoryInfo = categories.find(cat => cat.category_id === selectedCategory);
     const seriesWithCategory = {
       ...series,
@@ -208,10 +137,10 @@ const Series = ({ isActive }) => {
       detail: { series: seriesWithCategory }
     });
     window.dispatchEvent(showDetailsEvent);
-  };
+  }, [categories, selectedCategory]);
 
   // Função para reproduzir série diretamente (primeira temporada, primeiro episódio)
-  const handleSeriesSelect = async (series) => {
+  const handleSeriesSelect = useCallback(async (series) => {
     try {
       // Tentar carregar informações da série para reproduzir primeiro episódio
       const response = await fetch(
@@ -259,7 +188,137 @@ const Series = ({ isActive }) => {
       });
       window.dispatchEvent(playEvent);
     }
-  };
+  }, [selectedCategory, categories, API_BASE_URL, API_CREDENTIALS]);
+
+  // Sistema de navegação por controle remoto
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (event) => {
+      switch (event.key) {
+        case 'ArrowUp':
+          event.preventDefault();
+          if (focusArea === 'categories') {
+            setCategoryFocus(prev => Math.max(0, prev - 1));
+          } else if (focusArea === 'series') {
+            const gridColumns = 5;
+            const currentRow = Math.floor(seriesFocus / gridColumns);
+            
+            if (currentRow > 0) {
+              const newFocus = Math.max(0, seriesFocus - gridColumns);
+              setSeriesFocus(newFocus);
+            } else {
+              // Voltar para categorias
+              setFocusArea('categories');
+              // Definir o foco na categoria atualmente selecionada
+              const selectedIndex = categories.findIndex(cat => cat.category_id === selectedCategory);
+              setCategoryFocus(selectedIndex >= 0 ? selectedIndex : 0);
+            }
+          }
+          break;
+
+        case 'ArrowDown':
+          event.preventDefault();
+          if (focusArea === 'categories') {
+            setCategoryFocus(prev => Math.min(categories.length - 1, prev + 1));
+          } else if (focusArea === 'series') {
+            const gridColumns = 5;
+            const currentRow = Math.floor(seriesFocus / gridColumns);
+            const totalRows = Math.ceil(series.length / gridColumns);
+            
+            if (currentRow < totalRows - 1) {
+              const newFocus = Math.min(series.length - 1, seriesFocus + gridColumns);
+              setSeriesFocus(newFocus);
+            }
+          }
+          break;
+
+        case 'ArrowLeft':
+          event.preventDefault();
+          if (focusArea === 'categories') {
+            // Na sidebar, seta esquerda não faz nada
+          } else if (focusArea === 'series') {
+            const gridColumns = 5;
+            const currentCol = seriesFocus % gridColumns;
+            
+            if (currentCol > 0) {
+              setSeriesFocus(seriesFocus - 1);
+            } else {
+              // Voltar para categorias quando na primeira coluna
+              setFocusArea('categories');
+              // Definir o foco na categoria atualmente selecionada
+              const selectedIndex = categories.findIndex(cat => cat.category_id === selectedCategory);
+              setCategoryFocus(selectedIndex >= 0 ? selectedIndex : 0);
+            }
+          }
+          break;
+
+        case 'ArrowRight':
+          event.preventDefault();
+          if (focusArea === 'categories') {
+            // Ir para séries se houver séries carregadas
+            if (series.length > 0) {
+              setFocusArea('series');
+              setSeriesFocus(0);
+            }
+          } else if (focusArea === 'series') {
+            const gridColumns = 5;
+            const currentCol = seriesFocus % gridColumns;
+            
+            if (currentCol < gridColumns - 1 && seriesFocus < series.length - 1) {
+              setSeriesFocus(seriesFocus + 1);
+            }
+          }
+          break;
+
+        case 'Enter':
+        case ' ':
+          event.preventDefault();
+          if (focusArea === 'categories') {
+            const selectedCat = categories[categoryFocus];
+            if (selectedCat) {
+              setSelectedCategory(selectedCat.category_id);
+              loadSeries(selectedCat.category_id);
+            }
+          } else if (focusArea === 'series') {
+            const selectedSeries = series[seriesFocus];
+            if (selectedSeries) {
+              handleSeriesDetails(selectedSeries);
+            }
+          }
+          break;
+
+        case 'Escape':
+        case 'Backspace':
+          event.preventDefault();
+          if (focusArea === 'series') {
+            // Voltar para categorias
+            setFocusArea('categories');
+            // Definir o foco na categoria atualmente selecionada
+            const selectedIndex = categories.findIndex(cat => cat.category_id === selectedCategory);
+            setCategoryFocus(selectedIndex >= 0 ? selectedIndex : 0);
+          }
+          break;
+
+        case 'p':
+        case 'P':
+          event.preventDefault();
+          if (focusArea === 'series') {
+            const selectedSeries = series[seriesFocus];
+            if (selectedSeries) {
+              handleSeriesSelect(selectedSeries);
+            }
+          }
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isActive, focusArea, categoryFocus, seriesFocus, categories, series, selectedCategory, handleSeriesDetails, handleSeriesSelect, loadSeries]);
 
   // Função para tratar erros de imagem
   const handleImageError = (e) => {
