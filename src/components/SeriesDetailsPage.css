@@ -8,27 +8,44 @@
   flex-direction: column;
 }
 
-/* Layout Principal - Modificado para incluir área de abas */
+/* Layout Principal - Card promocional deve ser estático */
 .series-main-layout {
-  flex: 1;
+  height: 100vh; /* Ocupa toda a altura da viewport */
   display: flex;
-  flex-direction: column;
   position: relative;
   overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Container para painel de informações e arte promocional */
-.series-content-wrapper {
-  display: flex;
-  flex: 1;
-  min-height: 0;
+/* Estado expandido quando foco está nos episódios - card promocional permanece estático */
+.series-main-layout.episodes-focused {
+  height: 100vh; /* Mantém altura total */
+}
+
+/* Estado com transparência quando episódios estão em foco */
+.series-main-layout.episodes-focused .series-info-panel {
+  opacity: 0.4;
+  backdrop-filter: blur(25px) saturate(90%);
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(10, 10, 20, 0.5) 0%,
+      rgba(15, 15, 25, 0.4) 50%,
+      rgba(20, 20, 30, 0.3) 100%
+    );
+}
+
+/* Estado com transparência quando episódios estão em foco - card promocional fica normal */
+.series-main-layout.episodes-focused .series-promotional-art {
+  opacity: 1; /* Mantém opacidade normal */
+  filter: none; /* Remove blur */
 }
 
 /* Painel de Informações (Esquerda) */
 .series-info-panel {
   width: 35%;
   min-width: 400px;
-  padding: 60px 40px;
+  padding: 40px 30px; /* Reduzido o padding */
   background: 
     linear-gradient(
       135deg,
@@ -41,15 +58,40 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  overflow-y: auto;
+  gap: 20px; /* Reduzido de 24px */
+  overflow: hidden; /* Removido overflow-y: auto para comportamento de TV */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Efeito de blur e transparência na borda direita para melhor mesclagem */
+/* REMOVIDO - Blur deve ser na arte promocional, não no painel de informações */
 
 /* Arte Promocional (Direita) */
 .series-promotional-art {
   flex: 1;
   position: relative;
   overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efeito de blur na borda esquerda da arte promocional para melhor mesclagem */
+.series-promotional-art::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 80px;
+  background: linear-gradient(
+    to right,
+    rgba(10, 10, 20, 0.4) 0%,
+    rgba(10, 10, 20, 0.2) 40%,
+    rgba(10, 10, 20, 0.1) 70%,
+    transparent 100%
+  );
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .promotional-image {
@@ -68,15 +110,17 @@
   background: 
     linear-gradient(
       to right,
-      rgba(10, 10, 20, 0.4) 0%,
-      transparent 40%,
-      transparent 100%
+      rgba(10, 10, 20, 0.8) 0%,
+      rgba(10, 10, 20, 0.6) 15%,
+      rgba(10, 10, 20, 0.3) 35%,
+      rgba(10, 10, 20, 0.1) 60%,
+      transparent 80%
     ),
     linear-gradient(
       to bottom,
       transparent 0%,
       transparent 70%,
-      rgba(0, 0, 0, 0.3) 100%
+      rgba(0, 0, 0, 0.15) 100%
     );
 }
 
@@ -242,115 +286,99 @@
   transform: scale(1.02);
 }
 
-/* Barra de Navegação - Movida para baixo do conteúdo principal */
-.series-navigation-bar {
-  background: 
-    linear-gradient(
-      135deg,
-      rgba(15, 15, 25, 0.95) 0%,
-      rgba(25, 25, 35, 0.9) 100%
-    );
-  backdrop-filter: blur(20px) saturate(120%);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 20px 40px;
-  z-index: 20;
-}
-
-.navigation-tabs {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-tab {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 1.1rem;
-  font-weight: 500;
-  padding: 12px 24px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  border-radius: 8px;
-}
-
-.nav-tab:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.nav-tab.active {
-  color: #6366f1;
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.nav-tab.active::after {
-  content: '';
+/* Área de Episódios - Agora com posicionamento absoluto para sobrepor o card promocional */
+.series-episodes-area {
   position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  height: 3px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border-radius: 2px;
-}
-
-.nav-tab.focused {
-  color: #6366f1;
-  transform: scale(1.05);
-  background: rgba(99, 102, 241, 0.15);
-}
-
-/* Conteúdo das Abas - Modificado para não sobrepor */
-.tab-content {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35%; /* Altura inicial */
   background: 
     linear-gradient(
-      135deg,
-      rgba(10, 10, 20, 0.95) 0%,
-      rgba(15, 15, 25, 0.9) 100%
+      180deg,
+      rgba(10, 10, 20, 0.4) 0%,
+      rgba(15, 15, 25, 0.7) 50%,
+      rgba(20, 20, 30, 0.85) 100%
     );
-  backdrop-filter: blur(20px) saturate(120%);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  opacity: 0;
-  visibility: hidden;
-  max-height: 0;
+  backdrop-filter: blur(25px) saturate(150%);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100; /* Fica acima do card promocional */
+}
+
+/* Estado expandido - efeito frosted glass intensificado */
+.series-episodes-area.episodes-focused {
+  height: 65%; /* Expande para ocupar mais espaço */
+  background: 
+    linear-gradient(
+      180deg,
+      rgba(10, 10, 20, 0.2) 0%,
+      rgba(15, 15, 25, 0.4) 30%,
+      rgba(20, 20, 30, 0.6) 70%,
+      rgba(25, 25, 35, 0.8) 100%
+    );
+  backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
+  border-top: 2px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 
+    0 -10px 40px rgba(99, 102, 241, 0.3),
+    0 -5px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Conteúdo das Abas - Sempre ativo */
+.tab-content {
+  height: 100%;
+  background: transparent;
+  backdrop-filter: none;
+  overflow: hidden;
 }
 
 .tab-content.active {
   opacity: 1;
   visibility: visible;
-  max-height: 600px;
-  overflow-y: auto;
+  pointer-events: all;
 }
 
-/* Seção de Episódios */
+/* Remover bloqueio de interação com o fundo */
+.series-main-layout:has(.tab-content.active) .series-info-panel,
+.series-main-layout.tab-overlay-active .series-info-panel {
+  pointer-events: all; /* Permitir interação */
+  user-select: auto;
+}
+
+.series-main-layout:has(.tab-content.active) .series-promotional-art,
+.series-main-layout.tab-overlay-active .series-promotional-art {
+  pointer-events: all; /* Permitir interação */
+  user-select: auto;
+}
+
+/* Seção de Episódios - Otimizada para TV */
 .episodes-tab-content {
-  padding: 40px 60px;
+  padding: 20px 40px; /* Reduzido padding */
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 20px; /* Reduzido de 32px */
+  height: 100%;
+  overflow: hidden; /* Removido overflow-y: auto para comportamento de TV */
 }
 
 .season-selector {
   display: flex;
-  gap: 16px;
+  gap: 12px; /* Reduzido de 16px */
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
 .season-selector-item {
   flex-shrink: 0;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  color: rgba(255, 255, 255, 0.8);
+  padding: 8px 18px; /* Reduzido padding */
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
@@ -363,41 +391,99 @@
 }
 
 .season-selector-item.focused {
-  transform: scale(1.05);
-  border-color: #6366f1;
+  transform: scale(1.1);
+  border: 2px solid #6366f1;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 
+    0 0 0 3px rgba(99, 102, 241, 0.3),
+    0 8px 25px rgba(99, 102, 241, 0.4);
+  color: white;
+  z-index: 5;
+  position: relative;
 }
 
-/* Grade de Episódios */
+.season-selector-item.focused::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(45deg, #6366f1, #8b5cf6, #ec4899, #6366f1);
+  border-radius: 23px;
+  z-index: -1;
+  animation: seasonFocusPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes seasonFocusPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Grade de Episódios - Otimizada para TV */
 .episodes-grid-container {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden; /* Removido overflow-y: auto para comportamento de TV */
 }
 
 .episodes-grid-new {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); /* Reduzido de 280px */
+  gap: 16px; /* Reduzido de 24px */
+}
+
+/* Mensagem quando não há episódios */
+.no-episodes-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+  gap: 16px;
+}
+
+.no-episodes-message i {
+  font-size: 3rem;
+  color: rgba(99, 102, 241, 0.6);
+  margin-bottom: 8px;
+}
+
+.no-episodes-message h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.no-episodes-message p {
+  font-size: 1rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 400px;
+  line-height: 1.5;
 }
 
 .episode-card-new {
   background: 
     linear-gradient(
       135deg,
-      rgba(25, 25, 40, 0.8) 0%,
-      rgba(35, 25, 50, 0.6) 100%
+      rgba(25, 25, 40, 0.9) 0%,
+      rgba(35, 25, 50, 0.7) 100%
     );
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px; /* Reduzido de 16px */
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(15px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
 }
 
 .episode-thumbnail {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: 120px; /* Reduzido de 160px */
   overflow: hidden;
 }
 
@@ -441,7 +527,7 @@
 }
 
 .episode-details {
-  padding: 20px;
+  padding: 15px; /* Reduzido de 20px */
 }
 
 .episode-header {
@@ -466,24 +552,24 @@
 }
 
 .episode-title-new {
-  font-size: 1.1rem;
+  font-size: 1rem; /* Reduzido de 1.1rem */
   font-weight: 600;
   color: white;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   line-height: 1.3;
 }
 
 .episode-meta {
   display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-  font-size: 0.85rem;
+  gap: 12px; /* Reduzido de 16px */
+  margin-bottom: 8px; /* Reduzido de 12px */
+  font-size: 0.8rem; /* Reduzido de 0.85rem */
   color: rgba(255, 255, 255, 0.6);
 }
 
 .episode-description-new {
-  font-size: 0.95rem;
-  line-height: 1.4;
+  font-size: 0.85rem; /* Reduzido de 0.95rem */
+  line-height: 1.3;
   color: rgba(255, 255, 255, 0.8);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -492,9 +578,44 @@
 }
 
 .episode-card-new.focused {
-  transform: scale(1.03) translateY(-4px);
-  border-color: rgba(99, 102, 241, 0.6);
-  box-shadow: 0 16px 40px rgba(99, 102, 241, 0.3);
+  transform: scale(1.05) translateY(-8px);
+  border: 3px solid #6366f1;
+  box-shadow: 
+    0 0 0 2px rgba(99, 102, 241, 0.3),
+    0 20px 50px rgba(99, 102, 241, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(99, 102, 241, 0.15) 0%,
+      rgba(139, 92, 246, 0.1) 100%
+    );
+  z-index: 10;
+  position: relative;
+}
+
+.episode-card-new.focused::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #6366f1, #8b5cf6, #ec4899, #6366f1);
+  border-radius: 18px;
+  z-index: -1;
+  animation: focusPulse 2s ease-in-out infinite;
+}
+
+@keyframes focusPulse {
+  0%, 100% { 
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.02);
+  }
 }
 
 /* Estado de Loading */
@@ -610,7 +731,7 @@
 }
 
 @media (max-width: 1024px) {
-  .series-content-wrapper {
+  .series-main-layout {
     flex-direction: column;
   }
   
@@ -627,37 +748,6 @@
   .episodes-grid-new {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
-  
-  .series-navigation-bar {
-    padding: 15px 30px;
-  }
-  
-  .navigation-tabs {
-    gap: 20px;
-  }
-  
-  .nav-tab {
-    font-size: 1rem;
-    padding: 10px 20px;
-  }
-}
-
-/* Scrollbars */
-.episodes-tab-content::-webkit-scrollbar,
-.series-info-panel::-webkit-scrollbar {
-  width: 6px;
-}
-
-.episodes-tab-content::-webkit-scrollbar-track,
-.series-info-panel::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
-}
-
-.episodes-tab-content::-webkit-scrollbar-thumb,
-.series-info-panel::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.6);
-  border-radius: 3px;
 }
 
 /* Animações de entrada */
@@ -689,4 +779,82 @@
 
 .series-promotional-art {
   animation: slideInRight 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Melhorar foco nos botões de ação */
+.primary-action-btn.focused {
+  transform: scale(1.08);
+  box-shadow: 
+    0 0 0 3px rgba(99, 102, 241, 0.4),
+    0 15px 40px rgba(99, 102, 241, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
+.secondary-action-btn.focused {
+  background: rgba(99, 102, 241, 0.25);
+  border: 2px solid #6366f1;
+  transform: scale(1.05);
+  box-shadow: 
+    0 0 0 3px rgba(99, 102, 241, 0.3),
+    0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+/* Indicador de Navegação */
+.navigation-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(15, 15, 25, 0.9) 100%
+    );
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: slideInFromRight 0.5s ease-out;
+}
+
+.nav-indicator-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.nav-area-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.nav-help {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+
+.nav-help span {
+  white-space: nowrap;
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 } 

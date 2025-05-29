@@ -157,6 +157,15 @@ function App() {
             });
             window.dispatchEvent(seriesEvent);
           }
+        } else if (currentSection === SECTIONS.SERIES_DETAILS) {
+          // Navegação específica para detalhes da série - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13) {
+            // Delegar navegação para o componente SeriesDetailsPage através de eventos customizados
+            const seriesDetailsEvent = new CustomEvent('seriesDetailsNavigation', {
+              detail: { keyCode }
+            });
+            window.dispatchEvent(seriesDetailsEvent);
+          }
         } else if (currentSection === SECTIONS.SEARCH) {
           // Navegação específica para busca - delegar todas as teclas
           if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13) {

@@ -231,7 +231,7 @@ const Series = ({ isActive }) => {
                 name: `${series.name} - S${String(firstSeason).padStart(2, '0')}E${String(firstEpisode.episode_num || 1).padStart(2, '0')} - ${firstEpisode.title || firstEpisode.name || 'Episódio'}`,
                 type: 'series',
                 category: selectedCategory ? categories.find(cat => cat.category_id === selectedCategory)?.category_name : 'Série',
-                description: firstEpisode.plot || firstEpisode.info || series.plot || 'Descrição não disponível',
+                description: firstEpisode.plot || firstEpisode.info?.plot || series.plot || 'Descrição não disponível',
                 year: series.releasedate || 'N/A',
                 rating: series.rating || firstEpisode.rating || 'N/A',
                 poster: series.cover || series.stream_icon
