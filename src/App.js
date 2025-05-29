@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Channels from './components/Channels';
 import Movies from './components/Movies';
 import Series from './components/Series';
+import SeriesDetailsPage from './components/SeriesDetailsPage';
 import Search from './components/Search';
 import VideoPlayer from './components/VideoPlayer';
 
@@ -16,6 +17,7 @@ const SECTIONS = {
   CHANNELS: 'channels', 
   MOVIES: 'movies',
   SERIES: 'series',
+  SERIES_DETAILS: 'series_details',
   SEARCH: 'search',
   PLAYER: 'player'
 };
@@ -41,6 +43,9 @@ function App() {
     streamUrl: '',
     streamInfo: null
   });
+
+  // Estado para a página de detalhes da série
+  const [selectedSeriesData, setSelectedSeriesData] = useState(null);
 
   // Registrar teclas do controle remoto Tizen (mantido do template original)
   useEffect(() => {
@@ -73,6 +78,15 @@ function App() {
           detail: { keyCode }
         });
         window.dispatchEvent(playerEvent);
+        return;
+      }
+
+      // Se estiver na página de detalhes da série, delegar navegação específica
+      if (currentSection === SECTIONS.SERIES_DETAILS) {
+        const seriesDetailsEvent = new CustomEvent('seriesDetailsNavigation', {
+          detail: { keyCode }
+        });
+        window.dispatchEvent(seriesDetailsEvent);
         return;
       }
 
@@ -165,6 +179,10 @@ function App() {
         if (currentSection === SECTIONS.PLAYER) {
           // Voltar do player para a seção anterior
           handleBackFromPlayer();
+        } else if (currentSection === SECTIONS.SERIES_DETAILS) {
+          // Voltar da página de detalhes para a lista de séries
+          setCurrentSection(SECTIONS.SERIES);
+          setSelectedSeriesData(null);
         } else if (currentSection !== SECTIONS.HOME) {
           setCurrentSection(SECTIONS.HOME);
           setOnMenu(false);
@@ -186,6 +204,18 @@ function App() {
 
     window.addEventListener('playContent', handlePlayContent);
     return () => window.removeEventListener('playContent', handlePlayContent);
+  }, []);
+
+  // Listener para navegação para detalhes da série
+  useEffect(() => {
+    const handleShowSeriesDetails = (event) => {
+      const { series } = event.detail;
+      setSelectedSeriesData(series);
+      setCurrentSection(SECTIONS.SERIES_DETAILS);
+    };
+
+    window.addEventListener('showSeriesDetails', handleShowSeriesDetails);
+    return () => window.removeEventListener('showSeriesDetails', handleShowSeriesDetails);
   }, []);
 
   // Listener para evento de volta à sidebar
@@ -216,6 +246,11 @@ function App() {
     setPlayerData({ streamUrl: '', streamInfo: null });
   };
 
+  const handleBackFromSeriesDetails = () => {
+    setCurrentSection(SECTIONS.SERIES);
+    setSelectedSeriesData(null);
+  };
+
   const renderCurrentSection = () => {
     switch (currentSection) {
       case SECTIONS.LOGIN:
@@ -239,6 +274,15 @@ function App() {
 
       case SECTIONS.SERIES:
         return <Series isActive={currentSection === SECTIONS.SERIES} />;
+
+      case SECTIONS.SERIES_DETAILS:
+        return (
+          <SeriesDetailsPage 
+            series={selectedSeriesData}
+            isActive={currentSection === SECTIONS.SERIES_DETAILS}
+            onBack={handleBackFromSeriesDetails}
+          />
+        );
 
       case SECTIONS.SEARCH:
         return <Search isActive={currentSection === SECTIONS.SEARCH} />;
@@ -275,8 +319,10 @@ function App() {
     }
   };
 
-  // Não mostrar sidebar na tela de login ou no player
-  const showSidebar = currentSection !== SECTIONS.LOGIN && currentSection !== SECTIONS.PLAYER;
+  // Não mostrar sidebar na tela de login, no player ou na página de detalhes
+  const showSidebar = currentSection !== SECTIONS.LOGIN && 
+                     currentSection !== SECTIONS.PLAYER && 
+                     currentSection !== SECTIONS.SERIES_DETAILS;
 
   return (
     <div className="App">
