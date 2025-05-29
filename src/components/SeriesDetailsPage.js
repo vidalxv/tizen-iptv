@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import './SeriesDetailsPage.css';
 
 const SeriesDetailsPage = ({ series, isActive, onBack }) => {
@@ -13,66 +13,101 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
   const [episodeFocus, setEpisodeFocus] = useState(0);
   const [loading, setLoading] = useState(false);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
+  const [episodesAreaExpanded, setEpisodesAreaExpanded] = useState(false); // Novo estado para controlar expansão
 
   // Referencias para navegação com foco
   const actionButtonsRef = useRef([]);
   const seasonElementsRef = useRef([]);
   const episodeElementsRef = useRef([]);
+  const autoLoadTimeoutRef = useRef(null); // Ref para controlar timeout do carregamento automático
 
-  const actionElements = ['play', 'favorite'];
+  // Memoizar actionElements para evitar recriação a cada render
+  const actionElements = useMemo(() => ['play', 'favorite'], []);
+  
   const API_BASE_URL = 'https://rota66.bar/player_api.php';
   const API_CREDENTIALS = 'username=zBB82J&password=AMeDHq';
 
-  // Função para calcular o número de colunas no grid dinamicamente
-  const getGridColumns = useCallback(() => {
-    // Por enquanto, vamos usar valor fixo mais comum até o problema ser resolvido
-    // Baseado na análise do CSS: minmax(240px, 1fr) em tela padrão ~1920px = ~6-7 colunas
-    const containerWidth = window.innerWidth * 0.65; // 65% para a área de episódios
-    const episodeMinWidth = 240 + 16; // 240px + gap
-    const estimatedColumns = Math.floor(containerWidth / episodeMinWidth);
-    const columns = Math.max(3, Math.min(6, estimatedColumns)); // Entre 3 e 6 colunas
+  // Mover loadEpisodes antes de selectSeason para resolver dependência
+  const loadEpisodes = useCallback(async (seasonNumber) => {
+    console.log('📥 loadEpisodes chamada para temporada:', seasonNumber);
     
-    console.log('Grid Columns Debug:', {
-      containerWidth,
-      episodeMinWidth,
-      estimatedColumns,
-      finalColumns: columns,
-      windowWidth: window.innerWidth
-    });
+    try {
+      setLoading(true);
+      console.log('🌐 Fazendo requisição para API...');
+      
+      const response = await fetch(
+        `${API_BASE_URL}?${API_CREDENTIALS}&action=get_series_info&series_id=${series.series_id}`
+      );
+      const data = await response.json();
+      
+      console.log('📊 Dados recebidos da API:', data);
+      
+      if (data.episodes && data.episodes[seasonNumber]) {
+        console.log('✅ Episódios encontrados para temporada', seasonNumber, ':', data.episodes[seasonNumber].length);
+        setEpisodes(data.episodes[seasonNumber]);
+        setSelectedEpisode(0);
+        setEpisodeFocus(0);
+        // Automaticamente expandir e navegar para a área de episódios após carregar
+        setEpisodesAreaExpanded(true);
+        setTimeout(() => {
+          setFocusArea('episodes');
+        }, 100); // Pequeno delay para garantir que os episódios foram renderizados
+      } else {
+        console.log('⚠️ Nenhum episódio encontrado para temporada:', seasonNumber);
+        setEpisodes([]);
+        // Mesmo sem episódios, permitir navegação para área de episódios
+        setEpisodesAreaExpanded(true);
+        setTimeout(() => {
+          setFocusArea('episodes');
+        }, 100);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar episódios:', error);
+      setEpisodes([]);
+      // Em caso de erro, ainda permitir navegação
+      setEpisodesAreaExpanded(true);
+      setTimeout(() => {
+        setFocusArea('episodes');
+      }, 100);
+    } finally {
+      console.log('🏁 Finalizando carregamento de episódios');
+      setLoading(false);
+    }
+  }, [series.series_id, API_BASE_URL, API_CREDENTIALS]);
+
+  const selectSeason = useCallback((seasonNumber) => {
+    console.log('🎯 selectSeason chamada com temporada:', seasonNumber, 'atual:', selectedSeason);
     
-    return columns;
-  }, []);
+    // Evitar carregamento desnecessário se a temporada já estiver selecionada
+    if (selectedSeason === seasonNumber) {
+      console.log('⚠️ Temporada já selecionada, pulando carregamento');
+      return;
+    }
+    
+    console.log('✅ Iniciando carregamento da temporada:', seasonNumber);
+    
+    // Limpar timeout anterior se existir
+    if (autoLoadTimeoutRef.current) {
+      clearTimeout(autoLoadTimeoutRef.current);
+    }
+    
+    setSelectedSeason(seasonNumber);
+    const seasonIndex = seasons.findIndex(s => s.season_number === seasonNumber);
+    setSeasonFocus(seasonIndex);
+    loadEpisodes(seasonNumber);
+  }, [selectedSeason, seasons, loadEpisodes]);
 
   // Funções de navegação refatoradas com useCallback
   const handleUpNavigation = useCallback(() => {
     if (focusArea === 'episodes') {
-      // Navegação vertical para cima nos episódios
-      const episodesPerRow = getGridColumns();
-      const currentRow = Math.floor(episodeFocus / episodesPerRow);
-      const currentCol = episodeFocus % episodesPerRow;
-      
-      console.log('Up Navigation Debug:', {
-        currentFocus: episodeFocus,
-        episodesPerRow,
-        currentRow,
-        currentCol,
-        totalEpisodes: episodes.length
-      });
-      
-      // Se estamos na primeira linha, ir para temporadas ou ações
-      if (currentRow === 0) {
-        if (seasons.length > 0) {
-          setFocusArea('seasons');
-          setSeasonFocus(seasonFocus);
-        } else {
-          setFocusArea('actions');
-          setFocusedElement('play');
-        }
+      // Na área de episódios (carrossel), seta para cima vai para temporadas ou ações
+      if (seasons.length > 0) {
+        setFocusArea('seasons');
+        setSeasonFocus(seasonFocus);
       } else {
-        // Ir para a linha de cima, mesma coluna
-        const targetEpisode = episodeFocus - episodesPerRow;
-        console.log('Moving up to episode:', targetEpisode);
-        setEpisodeFocus(targetEpisode);
+        setFocusArea('actions');
+        setFocusedElement('play');
+        setEpisodesAreaExpanded(false); // Recolher área ao sair dos episódios
       }
     } else if (focusArea === 'seasons') {
       if (seasonFocus > 0) {
@@ -80,11 +115,12 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
       } else {
         setFocusArea('actions');
         setFocusedElement('play');
+        setEpisodesAreaExpanded(false); // Recolher área ao sair das temporadas
       }
     } else if (focusArea === 'actions') {
       // Já no topo, não faz nada
     }
-  }, [focusArea, episodeFocus, seasons.length, seasonFocus, getGridColumns, episodes.length]);
+  }, [focusArea, seasons.length, seasonFocus]);
 
   const handleDownNavigation = useCallback(() => {
     if (focusArea === 'actions') {
@@ -92,46 +128,21 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
       if (seasons.length > 0) {
         setFocusArea('seasons');
         setSeasonFocus(0);
+        setEpisodesAreaExpanded(true); // Expandir área ao navegar para baixo
       } else {
         setFocusArea('episodes');
         setEpisodeFocus(0);
+        setEpisodesAreaExpanded(true); // Expandir área ao navegar para baixo
       }
     } else if (focusArea === 'seasons') {
       // Sempre permitir navegar para episódios, independente se há episódios carregados
       setFocusArea('episodes');
       setEpisodeFocus(0);
     } else if (focusArea === 'episodes') {
-      // Navegação vertical nos episódios
-      const episodesPerRow = getGridColumns();
-      const currentRow = Math.floor(episodeFocus / episodesPerRow);
-      const currentCol = episodeFocus % episodesPerRow;
-      const totalRows = Math.ceil(episodes.length / episodesPerRow);
-      
-      console.log('Down Navigation Debug:', {
-        currentFocus: episodeFocus,
-        episodesPerRow,
-        currentRow,
-        currentCol,
-        totalRows,
-        totalEpisodes: episodes.length
-      });
-      
-      // Se não estamos na última linha, ir para baixo
-      if (currentRow < totalRows - 1) {
-        const targetEpisode = episodeFocus + episodesPerRow;
-        // Verificar se o episódio de destino existe
-        if (targetEpisode < episodes.length) {
-          console.log('Moving down to episode:', targetEpisode);
-          setEpisodeFocus(targetEpisode);
-        } else {
-          // Se não existe, ir para o último episódio da última linha
-          console.log('Target episode does not exist, going to last episode:', episodes.length - 1);
-          setEpisodeFocus(episodes.length - 1);
-        }
-      }
-      // Se já estamos na última linha, não fazer nada
+      // No carrossel horizontal, seta para baixo não faz nada (sem navegação vertical)
+      // Mantém o foco no episódio atual
     }
-  }, [focusArea, seasons.length, episodeFocus, episodes.length, getGridColumns]);
+  }, [focusArea, seasons.length]);
 
   const handleLeftNavigation = useCallback(() => {
     if (focusArea === 'actions') {
@@ -140,23 +151,56 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
       setFocusedElement(actionElements[prevIndex]);
     } else if (focusArea === 'seasons') {
       if (seasonFocus > 0) {
-        setSeasonFocus(seasonFocus - 1);
+        const newSeasonFocus = seasonFocus - 1;
+        setSeasonFocus(newSeasonFocus);
+        
+        // Cancelar timeout anterior se existir
+        if (autoLoadTimeoutRef.current) {
+          clearTimeout(autoLoadTimeoutRef.current);
+        }
+        
+        // Carregamento imediato - removido delay para debug
+        const season = seasons[newSeasonFocus];
+        if (season) {
+          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
+          selectSeason(season.season_number);
+        }
       } else {
         // Ir para a última temporada (navegação circular)
-        setSeasonFocus(seasons.length - 1);
+        const newSeasonFocus = seasons.length - 1;
+        setSeasonFocus(newSeasonFocus);
+        
+        // Cancelar timeout anterior se existir
+        if (autoLoadTimeoutRef.current) {
+          clearTimeout(autoLoadTimeoutRef.current);
+        }
+        
+        // Carregamento imediato - removido delay para debug
+        const season = seasons[newSeasonFocus];
+        if (season) {
+          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
+          selectSeason(season.season_number);
+        }
       }
     } else if (focusArea === 'episodes') {
-      // Navegação horizontal para esquerda - simples sequencial
-      console.log('Left Navigation:', {
-        currentFocus: episodeFocus,
-        canGoLeft: episodeFocus > 0
-      });
-      
+      // Navegação horizontal para esquerda no carrossel
       if (episodeFocus > 0) {
-        setEpisodeFocus(episodeFocus - 1);
+        const newFocus = episodeFocus - 1;
+        setEpisodeFocus(newFocus);
+        
+        // Scroll automático para o episódio focado
+        setTimeout(() => {
+          if (episodeElementsRef.current[newFocus]) {
+            episodeElementsRef.current[newFocus].scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'nearest',
+              inline: 'center'
+            });
+          }
+        }, 50);
       }
     }
-  }, [focusArea, focusedElement, seasonFocus, seasons.length, episodeFocus, actionElements]);
+  }, [focusArea, focusedElement, seasonFocus, seasons, episodeFocus, actionElements, selectSeason]);
 
   const handleRightNavigation = useCallback(() => {
     if (focusArea === 'actions') {
@@ -165,24 +209,56 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
       setFocusedElement(actionElements[nextIndex]);
     } else if (focusArea === 'seasons') {
       if (seasonFocus < seasons.length - 1) {
-        setSeasonFocus(seasonFocus + 1);
+        const newSeasonFocus = seasonFocus + 1;
+        setSeasonFocus(newSeasonFocus);
+        
+        // Cancelar timeout anterior se existir
+        if (autoLoadTimeoutRef.current) {
+          clearTimeout(autoLoadTimeoutRef.current);
+        }
+        
+        // Carregamento imediato - removido delay para debug
+        const season = seasons[newSeasonFocus];
+        if (season) {
+          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
+          selectSeason(season.season_number);
+        }
       } else {
         // Ir para a primeira temporada (navegação circular)
-        setSeasonFocus(0);
+        const newSeasonFocus = 0;
+        setSeasonFocus(newSeasonFocus);
+        
+        // Cancelar timeout anterior se existir
+        if (autoLoadTimeoutRef.current) {
+          clearTimeout(autoLoadTimeoutRef.current);
+        }
+        
+        // Carregamento imediato - removido delay para debug
+        const season = seasons[newSeasonFocus];
+        if (season) {
+          console.log('🔄 Carregando temporada automaticamente:', season.season_number);
+          selectSeason(season.season_number);
+        }
       }
     } else if (focusArea === 'episodes') {
-      // Navegação horizontal para direita - simples sequencial
-      console.log('Right Navigation:', {
-        currentFocus: episodeFocus,
-        canGoRight: episodeFocus < episodes.length - 1,
-        totalEpisodes: episodes.length
-      });
-      
+      // Navegação horizontal para direita no carrossel
       if (episodeFocus < episodes.length - 1) {
-        setEpisodeFocus(episodeFocus + 1);
+        const newFocus = episodeFocus + 1;
+        setEpisodeFocus(newFocus);
+        
+        // Scroll automático para o episódio focado
+        setTimeout(() => {
+          if (episodeElementsRef.current[newFocus]) {
+            episodeElementsRef.current[newFocus].scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'nearest',
+              inline: 'center'
+            });
+          }
+        }, 50);
       }
     }
-  }, [focusArea, focusedElement, seasonFocus, seasons.length, episodeFocus, episodes.length, actionElements]);
+  }, [focusArea, focusedElement, seasonFocus, seasons, episodeFocus, episodes.length, actionElements, selectSeason]);
 
   const playEpisode = useCallback((episode) => {
     const playEvent = new CustomEvent('playContent', {
@@ -248,48 +324,6 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
     setIsFavorite(!isFavorite);
   }, [series, isFavorite]);
 
-  const loadEpisodes = useCallback(async (seasonNumber) => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}?${API_CREDENTIALS}&action=get_series_info&series_id=${series.series_id}`
-      );
-      const data = await response.json();
-      
-      if (data.episodes && data.episodes[seasonNumber]) {
-        setEpisodes(data.episodes[seasonNumber]);
-        setSelectedEpisode(0);
-        setEpisodeFocus(0);
-        // Automaticamente navegar para a área de episódios após carregar
-        setTimeout(() => {
-          setFocusArea('episodes');
-        }, 100); // Pequeno delay para garantir que os episódios foram renderizados
-      } else {
-        setEpisodes([]);
-        // Mesmo sem episódios, permitir navegação para área de episódios
-        setTimeout(() => {
-          setFocusArea('episodes');
-        }, 100);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar episódios:', error);
-      setEpisodes([]);
-      // Em caso de erro, ainda permitir navegação
-      setTimeout(() => {
-        setFocusArea('episodes');
-      }, 100);
-    } finally {
-      setLoading(false);
-    }
-  }, [series.series_id, API_BASE_URL, API_CREDENTIALS]);
-
-  const selectSeason = useCallback((seasonNumber) => {
-    setSelectedSeason(seasonNumber);
-    const seasonIndex = seasons.findIndex(s => s.season_number === seasonNumber);
-    setSeasonFocus(seasonIndex);
-    loadEpisodes(seasonNumber);
-  }, [seasons, loadEpisodes]);
-
   // Função de ação refatorada com useCallback
   const handleAction = useCallback(() => {
     if (focusArea === 'actions') {
@@ -307,9 +341,6 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
         default:
           break;
       }
-    } else if (focusArea === 'seasons' && seasons[seasonFocus]) {
-      const season = seasons[seasonFocus];
-      selectSeason(season.season_number);
     } else if (focusArea === 'episodes' && episodes[episodeFocus]) {
       const episode = episodes[episodeFocus];
       setSelectedEpisode(episodeFocus);
@@ -317,7 +348,20 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
     } else if (focusArea === 'episodes' && episodes.length === 0) {
       console.log('Nenhum episódio disponível para esta temporada');
     }
-  }, [focusArea, focusedElement, seasons, seasonFocus, episodes, episodeFocus, selectedEpisode, playEpisode, loadFirstEpisode, toggleFavorite, selectSeason]);
+  }, [focusArea, focusedElement, episodes, episodeFocus, selectedEpisode, playEpisode, loadFirstEpisode, toggleFavorite]);
+
+  // Função para lidar com o botão voltar
+  const handleBackNavigation = useCallback(() => {
+    if (episodesAreaExpanded && (focusArea === 'episodes' || focusArea === 'seasons')) {
+      // Se a área de episódios está expandida e estamos nela, apenas encolher
+      setEpisodesAreaExpanded(false);
+      setFocusArea('actions');
+      setFocusedElement('play');
+    } else {
+      // Caso contrário, voltar para a tela anterior
+      onBack();
+    }
+  }, [episodesAreaExpanded, focusArea, onBack]);
 
   const loadSeriesInfo = useCallback(async () => {
     if (!series?.series_id) return;
@@ -352,7 +396,7 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
   // Função para atualizar foco visual e scroll automático
   const updateFocusVisual = useCallback(() => {
     // Remover foco de todos os elementos
-    document.querySelectorAll('.primary-action-btn, .secondary-action-btn, .season-selector-item, .episode-card-new').forEach(el => {
+    document.querySelectorAll('.primary-action-btn, .secondary-action-btn, .season-number-item, .episode-card-new').forEach(el => {
       el.classList.remove('focused');
     });
 
@@ -441,7 +485,7 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
         case 'Escape':
         case 'Backspace':
           event.preventDefault();
-          onBack();
+          handleBackNavigation(); // Usar nova função de navegação de volta
           break;
         
         default:
@@ -453,12 +497,16 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      // Limpar timeout ao desmontar componente
+      if (autoLoadTimeoutRef.current) {
+        clearTimeout(autoLoadTimeoutRef.current);
+      }
     };
     // DEPENDÊNCIAS APENAS DA NAVEGAÇÃO - sem loadSeriesInfo
   }, [
     isActive,
     series,
-    onBack,
+    handleBackNavigation, // Atualizar dependência
     handleUpNavigation,
     handleDownNavigation, 
     handleLeftNavigation,
@@ -481,13 +529,13 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
           <div className="nav-help">
             <span>↑↓←→ Navegar</span>
             <span>ENTER Selecionar</span>
-            <span>VOLTAR Sair</span>
+            <span>VOLTAR {episodesAreaExpanded && (focusArea === 'episodes' || focusArea === 'seasons') ? 'Encolher' : 'Sair'}</span>
           </div>
         </div>
       </div>
 
       {/* Layout Principal */}
-      <div className={`series-main-layout ${focusArea === 'episodes' ? 'episodes-focused' : ''}`}>
+      <div className={`series-main-layout ${episodesAreaExpanded ? 'episodes-focused' : ''}`}>
         {/* Painel de Informações (Esquerda) */}
         <div className="series-info-panel">
           <div className="series-header-info">
@@ -583,7 +631,7 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
       </div>
 
       {/* Nova Área de Episódios */}
-      <div className={`series-episodes-area ${focusArea === 'episodes' ? 'episodes-focused' : ''}`}>
+      <div className={`series-episodes-area ${episodesAreaExpanded ? 'episodes-focused' : ''}`}>
         {/* Conteúdo dos Episódios - Removida a barra de navegação */}
         <div className="tab-content active">
           <div className="episodes-tab-content">
@@ -598,21 +646,25 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
               <>
                 {/* Seletor de Temporadas */}
                 {seasons.length > 0 && (
-                  <div className="season-selector">
-                    {seasons.map((season, index) => (
-                      <div
-                        key={season.season_number}
-                        className={`season-selector-item ${
-                          selectedSeason === season.season_number ? 'active' : ''
-                        } ${
-                          focusArea === 'seasons' && seasonFocus === index ? 'focused' : ''
-                        }`}
-                        onClick={() => selectSeason(season.season_number)}
-                        ref={(el) => (seasonElementsRef.current[index] = el)}
-                      >
-                        Temporada {season.season_number}
-                      </div>
-                    ))}
+                  <div className="season-selector-hbo">
+                    <span className="season-title-fixed">Temporada</span>
+                    <div className="season-numbers-container">
+                      {seasons.map((season, index) => (
+                        <div
+                          key={season.season_number}
+                          className={`season-number-item ${
+                            selectedSeason === season.season_number ? 'active' : ''
+                          } ${
+                            focusArea === 'seasons' && seasonFocus === index ? 'focused' : ''
+                          }`}
+                          onClick={() => selectSeason(season.season_number)}
+                          ref={(el) => (seasonElementsRef.current[index] = el)}
+                        >
+                          {season.season_number}
+                        </div>
+                      ))}
+                      <div className="season-indicator-bar"></div>
+                    </div>
                   </div>
                 )}
                 

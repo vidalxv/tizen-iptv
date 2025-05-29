@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import LoginScreen from './components/LoginScreen';
 import Home from './components/Home';
@@ -46,6 +46,28 @@ function App() {
 
   // Estado para a página de detalhes da série
   const [selectedSeriesData, setSelectedSeriesData] = useState(null);
+  
+  // Histórico de navegação para botão voltar inteligente
+  const [navigationHistory, setNavigationHistory] = useState([]);
+
+  // Função para navegar para uma seção e rastrear histórico
+  const navigateToSection = useCallback((newSection, addToHistory = true) => {
+    if (addToHistory && currentSection !== newSection) {
+      setNavigationHistory(prev => [...prev, currentSection]);
+    }
+    setCurrentSection(newSection);
+  }, [currentSection]);
+
+  // Função para voltar usando histórico
+  const navigateBack = useCallback(() => {
+    if (navigationHistory.length > 0) {
+      const previousSection = navigationHistory[navigationHistory.length - 1];
+      setNavigationHistory(prev => prev.slice(0, -1));
+      setCurrentSection(previousSection);
+      return true; // Indica que conseguiu voltar
+    }
+    return false; // Indica que não há histórico
+  }, [navigationHistory]);
 
   // Registrar teclas do controle remoto Tizen (mantido do template original)
   useEffect(() => {
@@ -189,11 +211,17 @@ function App() {
           // Voltar do player para a seção anterior
           handleBackFromPlayer();
         } else if (currentSection === SECTIONS.SERIES_DETAILS) {
-          // Voltar da página de detalhes para a lista de séries
-          setCurrentSection(SECTIONS.SERIES);
+          // Usar histórico inteligente para voltar para a tela anterior
+          if (!navigateBack()) {
+            // Se não há histórico, voltar para SERIES como fallback
+            setCurrentSection(SECTIONS.SERIES);
+          }
           setSelectedSeriesData(null);
         } else if (currentSection !== SECTIONS.HOME) {
-          setCurrentSection(SECTIONS.HOME);
+          // Para outras seções, tentar usar histórico ou ir para HOME
+          if (!navigateBack()) {
+            setCurrentSection(SECTIONS.HOME);
+          }
           setOnMenu(false);
         }
       }
@@ -201,7 +229,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSection, onMenu, menuFocus, shelfFocus, itemFocus]);
+  }, [currentSection, onMenu, menuFocus, shelfFocus, itemFocus, navigateBack]);
 
   // Listener para eventos de reprodução de conteúdo
   useEffect(() => {
@@ -220,12 +248,12 @@ function App() {
     const handleShowSeriesDetails = (event) => {
       const { series } = event.detail;
       setSelectedSeriesData(series);
-      setCurrentSection(SECTIONS.SERIES_DETAILS);
+      navigateToSection(SECTIONS.SERIES_DETAILS); // Usar função que rastreia histórico
     };
 
     window.addEventListener('showSeriesDetails', handleShowSeriesDetails);
     return () => window.removeEventListener('showSeriesDetails', handleShowSeriesDetails);
-  }, []);
+  }, [currentSection, navigateToSection]); // Adicionar navigateToSection como dependência
 
   // Listener para evento de volta à sidebar
   useEffect(() => {
@@ -243,7 +271,7 @@ function App() {
   };
 
   const handleSectionChange = (sectionId) => {
-    setCurrentSection(sectionId);
+    navigateToSection(sectionId); // Usar função que rastreia histórico
     setOnMenu(false);
     setShelfFocus(0);
     setItemFocus(0);
