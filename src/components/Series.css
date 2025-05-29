@@ -1,9 +1,41 @@
+/* Container principal das séries */
+.series-page {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  background: #0a0a0a;
+  color: #ffffff;
+}
+
+.series-sidebar {
+  width: 300px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  border-right: 1px solid rgba(255, 140, 0, 0.2);
+  padding: 30px 20px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.series-sidebar h2 {
+  font-size: 1.8rem;
+  margin: 0 0 30px 0;
+  color: #FF8C00;
+  text-align: center;
+  border-bottom: 2px solid rgba(255, 140, 0, 0.3);
+  padding-bottom: 15px;
+}
+
+.series-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
 /* Layout principal das séries */
 .series-container {
   width: 100%;
   height: 100vh;
-  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
-  color: white;
+  background: #0a0a0a;
+  color: #ffffff;
   overflow: hidden;
 }
 
@@ -166,9 +198,36 @@
 .serie-description {
   font-size: 0.85rem;
   line-height: 1.4;
-  margin: 0;
+  margin: 0 0 15px 0;
   color: #e0e0e0;
   text-align: justify;
+}
+
+/* Novas dicas de ação */
+.series-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.action-hint {
+  font-size: 0.75rem;
+  color: #FF8C00;
+  background: rgba(255, 140, 0, 0.1);
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 500;
+  border: 1px solid rgba(255, 140, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.series:hover .action-hint,
+.series.focused .action-hint {
+  background: rgba(255, 140, 0, 0.2);
+  border-color: rgba(255, 140, 0, 0.4);
+  color: #FFA500;
 }
 
 /* Estados de loading */

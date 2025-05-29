@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import LoginScreen from './components/LoginScreen';
 import Home from './components/Home';
@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Channels from './components/Channels';
 import Movies from './components/Movies';
 import Series from './components/Series';
+import SeriesDetailsPage from './components/SeriesDetailsPage';
 import Search from './components/Search';
 import VideoPlayer from './components/VideoPlayer';
 
@@ -16,6 +17,7 @@ const SECTIONS = {
   CHANNELS: 'channels', 
   MOVIES: 'movies',
   SERIES: 'series',
+  SERIES_DETAILS: 'series_details',
   SEARCH: 'search',
   PLAYER: 'player'
 };
@@ -41,6 +43,31 @@ function App() {
     streamUrl: '',
     streamInfo: null
   });
+
+  // Estado para a página de detalhes da série
+  const [selectedSeriesData, setSelectedSeriesData] = useState(null);
+  
+  // Histórico de navegação para botão voltar inteligente
+  const [navigationHistory, setNavigationHistory] = useState([]);
+
+  // Função para navegar para uma seção e rastrear histórico
+  const navigateToSection = useCallback((newSection, addToHistory = true) => {
+    if (addToHistory && currentSection !== newSection) {
+      setNavigationHistory(prev => [...prev, currentSection]);
+    }
+    setCurrentSection(newSection);
+  }, [currentSection]);
+
+  // Função para voltar usando histórico
+  const navigateBack = useCallback(() => {
+    if (navigationHistory.length > 0) {
+      const previousSection = navigationHistory[navigationHistory.length - 1];
+      setNavigationHistory(prev => prev.slice(0, -1));
+      setCurrentSection(previousSection);
+      return true; // Indica que conseguiu voltar
+    }
+    return false; // Indica que não há histórico
+  }, [navigationHistory]);
 
   // Registrar teclas do controle remoto Tizen (mantido do template original)
   useEffect(() => {
@@ -73,6 +100,15 @@ function App() {
           detail: { keyCode }
         });
         window.dispatchEvent(playerEvent);
+        return;
+      }
+
+      // Se estiver na página de detalhes da série, delegar navegação específica
+      if (currentSection === SECTIONS.SERIES_DETAILS) {
+        const seriesDetailsEvent = new CustomEvent('seriesDetailsNavigation', {
+          detail: { keyCode }
+        });
+        window.dispatchEvent(seriesDetailsEvent);
         return;
       }
 
@@ -113,10 +149,8 @@ function App() {
             // TODO: Implementar seleção de item
           }
         } else if (currentSection === SECTIONS.CHANNELS) {
-          // Navegação específica para canais
-          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13) {
+          // Navegação específica para canais - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13) {
             // Delegar navegação para o componente Channels através de eventos customizados
             const channelsEvent = new CustomEvent('channelsNavigation', {
               detail: { keyCode }
@@ -124,10 +158,8 @@ function App() {
             window.dispatchEvent(channelsEvent);
           }
         } else if (currentSection === SECTIONS.MOVIES) {
-          // Navegação específica para filmes
-          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13 || keyCode === 73) {
+          // Navegação específica para filmes - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13 || keyCode === 73) {
             // Delegar navegação para o componente Movies através de eventos customizados
             // keyCode 73 = Tecla 'I' para preview
             const moviesEvent = new CustomEvent('moviesNavigation', {
@@ -136,10 +168,8 @@ function App() {
             window.dispatchEvent(moviesEvent);
           }
         } else if (currentSection === SECTIONS.SERIES) {
-          // Navegação específica para séries
-          if (keyCode === 37) { // Esquerda - voltar ao menu ou navegar nas categorias
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13 || keyCode === 73 || keyCode === 80) {
+          // Navegação específica para séries - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13 || keyCode === 73 || keyCode === 80) {
             // Delegar navegação para o componente Series através de eventos customizados
             // keyCode 13 = ENTER para abrir tela de detalhes
             // keyCode 73 = Tecla 'I' para preview/detalhes
@@ -149,11 +179,18 @@ function App() {
             });
             window.dispatchEvent(seriesEvent);
           }
+        } else if (currentSection === SECTIONS.SERIES_DETAILS) {
+          // Navegação específica para detalhes da série - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13) {
+            // Delegar navegação para o componente SeriesDetailsPage através de eventos customizados
+            const seriesDetailsEvent = new CustomEvent('seriesDetailsNavigation', {
+              detail: { keyCode }
+            });
+            window.dispatchEvent(seriesDetailsEvent);
+          }
         } else if (currentSection === SECTIONS.SEARCH) {
-          // Navegação específica para busca
-          if (keyCode === 37) { // Esquerda - voltar ao menu (apenas se não estiver digitando)
-            setOnMenu(true);
-          } else if (keyCode === 38 || keyCode === 40 || keyCode === 39 || keyCode === 13) {
+          // Navegação específica para busca - delegar todas as teclas
+          if (keyCode === 38 || keyCode === 40 || keyCode === 37 || keyCode === 39 || keyCode === 13) {
             // Delegar navegação para o componente Search através de eventos customizados
             const searchEvent = new CustomEvent('searchNavigation', {
               detail: { keyCode }
@@ -173,8 +210,18 @@ function App() {
         if (currentSection === SECTIONS.PLAYER) {
           // Voltar do player para a seção anterior
           handleBackFromPlayer();
+        } else if (currentSection === SECTIONS.SERIES_DETAILS) {
+          // Usar histórico inteligente para voltar para a tela anterior
+          if (!navigateBack()) {
+            // Se não há histórico, voltar para SERIES como fallback
+            setCurrentSection(SECTIONS.SERIES);
+          }
+          setSelectedSeriesData(null);
         } else if (currentSection !== SECTIONS.HOME) {
-          setCurrentSection(SECTIONS.HOME);
+          // Para outras seções, tentar usar histórico ou ir para HOME
+          if (!navigateBack()) {
+            setCurrentSection(SECTIONS.HOME);
+          }
           setOnMenu(false);
         }
       }
@@ -182,7 +229,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSection, onMenu, menuFocus, shelfFocus, itemFocus]);
+  }, [currentSection, onMenu, menuFocus, shelfFocus, itemFocus, navigateBack]);
 
   // Listener para eventos de reprodução de conteúdo
   useEffect(() => {
@@ -196,13 +243,35 @@ function App() {
     return () => window.removeEventListener('playContent', handlePlayContent);
   }, []);
 
+  // Listener para navegação para detalhes da série
+  useEffect(() => {
+    const handleShowSeriesDetails = (event) => {
+      const { series } = event.detail;
+      setSelectedSeriesData(series);
+      navigateToSection(SECTIONS.SERIES_DETAILS); // Usar função que rastreia histórico
+    };
+
+    window.addEventListener('showSeriesDetails', handleShowSeriesDetails);
+    return () => window.removeEventListener('showSeriesDetails', handleShowSeriesDetails);
+  }, [currentSection, navigateToSection]); // Adicionar navigateToSection como dependência
+
+  // Listener para evento de volta à sidebar
+  useEffect(() => {
+    const handleBackToSidebar = () => {
+      setOnMenu(true);
+    };
+
+    window.addEventListener('backToSidebar', handleBackToSidebar);
+    return () => window.removeEventListener('backToSidebar', handleBackToSidebar);
+  }, []);
+
   const handleLogin = () => {
     setCurrentSection(SECTIONS.HOME);
     setOnMenu(false);
   };
 
   const handleSectionChange = (sectionId) => {
-    setCurrentSection(sectionId);
+    navigateToSection(sectionId); // Usar função que rastreia histórico
     setOnMenu(false);
     setShelfFocus(0);
     setItemFocus(0);
@@ -212,6 +281,11 @@ function App() {
     // Voltar para a última seção que não seja o player
     setCurrentSection(SECTIONS.HOME);
     setPlayerData({ streamUrl: '', streamInfo: null });
+  };
+
+  const handleBackFromSeriesDetails = () => {
+    setCurrentSection(SECTIONS.SERIES);
+    setSelectedSeriesData(null);
   };
 
   const renderCurrentSection = () => {
@@ -237,6 +311,15 @@ function App() {
 
       case SECTIONS.SERIES:
         return <Series isActive={currentSection === SECTIONS.SERIES} />;
+
+      case SECTIONS.SERIES_DETAILS:
+        return (
+          <SeriesDetailsPage 
+            series={selectedSeriesData}
+            isActive={currentSection === SECTIONS.SERIES_DETAILS}
+            onBack={handleBackFromSeriesDetails}
+          />
+        );
 
       case SECTIONS.SEARCH:
         return <Search isActive={currentSection === SECTIONS.SEARCH} />;
@@ -273,8 +356,10 @@ function App() {
     }
   };
 
-  // Não mostrar sidebar na tela de login ou no player
-  const showSidebar = currentSection !== SECTIONS.LOGIN && currentSection !== SECTIONS.PLAYER;
+  // Não mostrar sidebar na tela de login, no player ou na página de detalhes
+  const showSidebar = currentSection !== SECTIONS.LOGIN && 
+                     currentSection !== SECTIONS.PLAYER && 
+                     currentSection !== SECTIONS.SERIES_DETAILS;
 
   return (
     <div className="App">

@@ -48,14 +48,16 @@ const MoviePreview = ({ movie, isVisible, onClose }) => {
         // Disparar evento para reproduzir filme
         const playEvent = new CustomEvent('playContent', {
           detail: {
-            name: movie.name,
-            url: `https://rota66.bar/movie/zBB82J/AMeDHq/${movie.stream_id}.mp4`,
-            type: 'movie',
-            category: movie.category_name || 'Filme',
-            description: movie.plot || 'Descrição não disponível',
-            year: movie.releasedate || 'N/A',
-            rating: movie.rating || 'N/A',
-            poster: movie.stream_icon
+            streamUrl: `https://rota66.bar/movie/zBB82J/AMeDHq/${movie.stream_id}.mp4`,
+            streamInfo: {
+              name: movie.name,
+              type: 'movie',
+              category: movie.category_name || 'Filme',
+              description: movie.plot || 'Descrição não disponível',
+              year: movie.releasedate || 'N/A',
+              rating: movie.rating || 'N/A',
+              poster: movie.stream_icon
+            }
           }
         });
         window.dispatchEvent(playEvent);

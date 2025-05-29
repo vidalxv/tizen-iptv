@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import SeriesPreview from './SeriesPreview';
 import './Series.css';
 
 const Series = ({ isActive }) => {
@@ -13,10 +12,6 @@ const Series = ({ isActive }) => {
   const [focusArea, setFocusArea] = useState('categories'); // 'categories' ou 'series'
   const [categoryFocus, setCategoryFocus] = useState(0);
   const [seriesFocus, setSeriesFocus] = useState(0);
-
-  // Estado para o modal de preview
-  const [previewSeries, setPreviewSeries] = useState(null);
-  const [showPreview, setShowPreview] = useState(false);
 
   // Referencias para navegação
   const categoriesRef = useRef([]);
@@ -83,70 +78,72 @@ const Series = ({ isActive }) => {
   useEffect(() => {
     if (!isActive) return;
 
-    const handleCategoriesNavigation = (keyCode) => {
-      if (keyCode === 38) { // Cima
-        setCategoryFocus(prev => (prev > 0 ? prev - 1 : categories.length - 1));
-      } else if (keyCode === 40) { // Baixo
-        setCategoryFocus(prev => (prev < categories.length - 1 ? prev + 1 : 0));
-      } else if (keyCode === 39) { // Direita - ir para series
-        if (series.length > 0) {
-          setFocusArea('series');
-          setSeriesFocus(0);
-        }
-      } else if (keyCode === 13) { // OK - selecionar categoria
-        if (categories[categoryFocus]) {
-          handleCategoryClick(categories[categoryFocus].category_id);
-        }
-      }
-    };
-
-    const handleSeriesNavigationInternal = (keyCode) => {
-      const seriesPerRow = Math.floor((window.innerWidth - 320) / 190); // Aproximação baseada no grid
-      const totalSeries = series.length;
-      
-      if (keyCode === 38) { // Cima
-        const newFocus = seriesFocus - seriesPerRow;
-        setSeriesFocus(newFocus >= 0 ? newFocus : seriesFocus);
-      } else if (keyCode === 40) { // Baixo
-        const newFocus = seriesFocus + seriesPerRow;
-        setSeriesFocus(newFocus < totalSeries ? newFocus : seriesFocus);
-      } else if (keyCode === 37) { // Esquerda
-        if (seriesFocus % seriesPerRow === 0) {
-          // Se estiver na primeira coluna, voltar para categorias
-          setFocusArea('categories');
-        } else {
-          setSeriesFocus(prev => (prev > 0 ? prev - 1 : 0));
-        }
-      } else if (keyCode === 39) { // Direita
-        setSeriesFocus(prev => (prev < totalSeries - 1 ? prev + 1 : prev));
-      } else if (keyCode === 13) { // OK - abrir tela de detalhes
-        if (series[seriesFocus]) {
-          handleSeriesPreview(series[seriesFocus]);
-        }
-      } else if (keyCode === 80) { // Tecla 'P' - Play direto
-        if (series[seriesFocus]) {
-          handleSeriesSelect(series[seriesFocus]);
-        }
-      } else if (keyCode === 73) { // Tecla 'I' - Info/Preview (mantido como alternativa)
-        if (series[seriesFocus]) {
-          handleSeriesPreview(series[seriesFocus]);
-        }
-      }
-    };
-
     const handleSeriesNavigation = (event) => {
       const { keyCode } = event.detail;
-      
+
       if (focusArea === 'categories') {
-        handleCategoriesNavigation(keyCode);
+        if (keyCode === 38) { // Cima
+          setCategoryFocus(prev => Math.max(0, prev - 1));
+        } else if (keyCode === 40) { // Baixo
+          setCategoryFocus(prev => Math.min(categories.length - 1, prev + 1));
+        } else if (keyCode === 39) { // Direita - ir para séries
+          if (series.length > 0) {
+            setFocusArea('series');
+            setSeriesFocus(0);
+          }
+        } else if (keyCode === 13) { // Enter - selecionar categoria
+          const selectedCat = categories[categoryFocus];
+          if (selectedCat) {
+            setSelectedCategory(selectedCat.category_id);
+            loadSeries(selectedCat.category_id);
+          }
+        }
       } else if (focusArea === 'series') {
-        handleSeriesNavigationInternal(keyCode);
+        const gridColumns = 5; // Assumindo 5 colunas no grid
+        const currentRow = Math.floor(seriesFocus / gridColumns);
+        const currentCol = seriesFocus % gridColumns;
+        const totalRows = Math.ceil(series.length / gridColumns);
+
+        if (keyCode === 38) { // Cima
+          if (currentRow > 0) {
+            const newFocus = Math.max(0, seriesFocus - gridColumns);
+            setSeriesFocus(newFocus);
+          } else {
+            // Voltar para categorias
+            setFocusArea('categories');
+          }
+        } else if (keyCode === 40) { // Baixo
+          if (currentRow < totalRows - 1) {
+            const newFocus = Math.min(series.length - 1, seriesFocus + gridColumns);
+            setSeriesFocus(newFocus);
+          }
+        } else if (keyCode === 37) { // Esquerda
+          if (currentCol > 0) {
+            setSeriesFocus(seriesFocus - 1);
+          } else {
+            // Voltar para categorias
+            setFocusArea('categories');
+          }
+        } else if (keyCode === 39) { // Direita
+          if (currentCol < gridColumns - 1 && seriesFocus < series.length - 1) {
+            setSeriesFocus(seriesFocus + 1);
+          }
+        } else if (keyCode === 13) { // Enter - abrir detalhes da série
+          const selectedSeries = series[seriesFocus];
+          if (selectedSeries) {
+            handleSeriesDetails(selectedSeries);
+          }
+        } else if (keyCode === 80) { // Tecla P - reproduzir diretamente
+          const selectedSeries = series[seriesFocus];
+          if (selectedSeries) {
+            handleSeriesSelect(selectedSeries);
+          }
+        }
       }
     };
 
     window.addEventListener('seriesNavigation', handleSeriesNavigation);
     return () => window.removeEventListener('seriesNavigation', handleSeriesNavigation);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, focusArea, categoryFocus, seriesFocus, categories, series]);
 
   // Atualizar foco visual
@@ -198,73 +195,62 @@ const Series = ({ isActive }) => {
     }
   };
 
-  const handleCategoryClick = (categoryId) => {
-    setSelectedCategory(categoryId);
-    const categoryIndex = categories.findIndex(cat => cat.category_id === categoryId);
-    setCategoryFocus(categoryIndex);
-    loadSeries(categoryId);
-    setFocusArea('series'); // Mover foco para as series
+  // Função para navegar para detalhes da série
+  const handleSeriesDetails = (series) => {
+    const categoryInfo = categories.find(cat => cat.category_id === selectedCategory);
+    const seriesWithCategory = {
+      ...series,
+      category_name: categoryInfo?.category_name || 'Série'
+    };
+    
+    // Disparar evento para navegar para a página de detalhes
+    const showDetailsEvent = new CustomEvent('showSeriesDetails', {
+      detail: { series: seriesWithCategory }
+    });
+    window.dispatchEvent(showDetailsEvent);
   };
 
+  // Função para reproduzir série diretamente (primeira temporada, primeiro episódio)
   const handleSeriesSelect = async (series) => {
-    console.log('series selecionada:', series);
-    
     try {
-      // Buscar informações detalhadas da series e episódios
+      // Tentar carregar informações da série para reproduzir primeiro episódio
       const response = await fetch(
         `${API_BASE_URL}?${API_CREDENTIALS}&action=get_series_info&series_id=${series.series_id}`
       );
-      const seriesInfo = await response.json();
+      const data = await response.json();
       
-      // Buscar primeiro episódio disponível
-      if (seriesInfo.episodes && Object.keys(seriesInfo.episodes).length > 0) {
-        const firstSeason = Object.keys(seriesInfo.episodes)[0];
-        const firstEpisode = seriesInfo.episodes[firstSeason][0];
+      if (data.episodes && Object.keys(data.episodes).length > 0) {
+        const firstSeason = Object.keys(data.episodes)[0];
+        const firstEpisode = data.episodes[firstSeason][0];
         
-        // Construir URL do stream para o primeiro episódio
-        const streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${firstEpisode.id}.mp4`;
-        
-        // Informações da series para o player
-        const streamInfo = {
-          name: `${series.name} - S${firstSeason}E${firstEpisode.episode_num} - ${firstEpisode.title}`,
-          category: selectedCategory ? categories.find(cat => cat.category_id === selectedCategory)?.category_name : 'series',
-          description: firstEpisode.plot || seriesInfo.info?.plot || `series - ${series.name}`,
-          year: seriesInfo.info?.releaseDate ? new Date(seriesInfo.info.releaseDate).getFullYear() : null,
-          rating: seriesInfo.info?.rating,
-          type: 'series'
-        };
-
-        // Disparar evento para reproduzir no VideoPlayer
-        const playEvent = new CustomEvent('playContent', {
-          detail: { streamUrl, streamInfo }
-        });
-        window.dispatchEvent(playEvent);
-      } else {
-        // Se não encontrar episódios, tentar URL genérica
-        const streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${series.series_id}.mp4`;
-        
-        const streamInfo = {
-          name: series.name,
-          category: selectedCategory ? categories.find(cat => cat.category_id === selectedCategory)?.category_name : 'series',
-          description: `series - ${series.name}`,
-          type: 'series'
-        };
-
-        const playEvent = new CustomEvent('playContent', {
-          detail: { streamUrl, streamInfo }
-        });
-        window.dispatchEvent(playEvent);
+        if (firstEpisode) {
+          const playEvent = new CustomEvent('playContent', {
+            detail: {
+              streamUrl: `https://rota66.bar/series/zBB82J/AMeDHq/${firstEpisode.id || firstEpisode.stream_id}.mp4`,
+              streamInfo: {
+                name: `${series.name} - S${String(firstSeason).padStart(2, '0')}E${String(firstEpisode.episode_num || 1).padStart(2, '0')} - ${firstEpisode.title || firstEpisode.name || 'Episódio'}`,
+                type: 'series',
+                category: selectedCategory ? categories.find(cat => cat.category_id === selectedCategory)?.category_name : 'Série',
+                description: firstEpisode.plot || firstEpisode.info?.plot || series.plot || 'Descrição não disponível',
+                year: series.releasedate || 'N/A',
+                rating: series.rating || firstEpisode.rating || 'N/A',
+                poster: series.cover || series.stream_icon
+              }
+            }
+          });
+          window.dispatchEvent(playEvent);
+        }
       }
     } catch (error) {
-      console.error('Erro ao carregar informações da series:', error);
+      console.error('Erro ao carregar informações da série:', error);
       
       // Fallback: tentar reproduzir com URL genérica
       const streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${series.series_id}.mp4`;
       
       const streamInfo = {
         name: series.name,
-        category: selectedCategory ? categories.find(cat => cat.category_id === selectedCategory)?.category_name : 'series',
-        description: `series - ${series.name}`,
+        category: selectedCategory ? categories.find(cat => cat.category_id === selectedCategory)?.category_name : 'Série',
+        description: `Série - ${series.name}`,
         type: 'series'
       };
 
@@ -275,21 +261,6 @@ const Series = ({ isActive }) => {
     }
   };
 
-  const handleSeriesPreview = (series) => {
-    const categoryInfo = categories.find(cat => cat.category_id === selectedCategory);
-    const seriesWithCategory = {
-      ...series,
-      category_name: categoryInfo?.category_name || 'Série'
-    };
-    setPreviewSeries(seriesWithCategory);
-    setShowPreview(true);
-  };
-
-  const closePreview = () => {
-    setShowPreview(false);
-    setPreviewSeries(null);
-  };
-
   // Função para tratar erros de imagem
   const handleImageError = (e) => {
     e.target.style.display = 'none';
@@ -298,32 +269,37 @@ const Series = ({ isActive }) => {
   if (!isActive) return null;
 
   return (
-    <div className="series-container" ref={containerRef}>
-      <div className="series-layout">
-        {/* Lista de Categorias */}
-        <div className="series-categories">
-          {loading ? (
-            <div className="loading">Carregando categorias...</div>
-          ) : (
-            categories.map((category, index) => (
+    <div className="series-page" ref={containerRef}>
+      <div className="series-sidebar">
+        <h2>Categorias de Séries</h2>
+        {loading ? (
+          <div className="loading">Carregando categorias...</div>
+        ) : (
+          <div className="series-categories">
+            {categories.map((category, index) => (
               <button
                 key={category.category_id}
                 ref={el => categoriesRef.current[index] = el}
                 className={`series-category-button ${
                   selectedCategory === category.category_id ? 'active' : ''
                 }`}
-                onClick={() => handleCategoryClick(category.category_id)}
+                onClick={() => {
+                  setSelectedCategory(category.category_id);
+                  setCategoryFocus(index);
+                  loadSeries(category.category_id);
+                }}
               >
                 {category.category_name}
               </button>
-            ))
-          )}
-        </div>
-
-        {/* Grid de series */}
+            ))}
+          </div>
+        )}
+      </div>
+      
+      <div className="series-main">
         <div className="series-content">
           {seriesLoading ? (
-            <div className="loading">Carregando series...</div>
+            <div className="loading">Carregando séries...</div>
           ) : (
             <div className="series-grid">
               {series.map((series, index) => (
@@ -331,7 +307,7 @@ const Series = ({ isActive }) => {
                   key={series.series_id}
                   ref={el => seriesRef.current[index] = el}
                   className="series"
-                  onClick={() => handleSeriesSelect(series)}
+                  onClick={() => handleSeriesDetails(series)}
                 >
                   <div className="series-poster">
                     <img
@@ -356,6 +332,10 @@ const Series = ({ isActive }) => {
                           'Descrição não disponível'
                         }
                       </p>
+                      <div className="series-actions">
+                        <span className="action-hint">ENTER Ver detalhes</span>
+                        <span className="action-hint">P Reproduzir</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -364,13 +344,6 @@ const Series = ({ isActive }) => {
           )}
         </div>
       </div>
-      {showPreview && (
-        <SeriesPreview
-          series={previewSeries}
-          isVisible={showPreview}
-          onClose={closePreview}
-        />
-      )}
     </div>
   );
 };
