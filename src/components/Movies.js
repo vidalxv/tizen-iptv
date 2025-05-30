@@ -185,7 +185,7 @@ const Movies = ({ isActive }) => {
     console.log('Filme selecionado:', movie);
     
     // Construir URL do stream
-    const streamUrl = `https://rota66.bar/movie/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${movie.stream_id}.mp4`;
+    const streamUrl = `https://rota66.bar/movie/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${movie.stream_id}.m3u8`;
     
     // Informações do filme para o player
     const streamInfo = {

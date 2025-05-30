@@ -48,7 +48,7 @@ const MoviePreview = ({ movie, isVisible, onClose }) => {
         // Disparar evento para reproduzir filme
         const playEvent = new CustomEvent('playContent', {
           detail: {
-            streamUrl: `https://rota66.bar/movie/zBB82J/AMeDHq/${movie.stream_id}.mp4`,
+            streamUrl: `https://rota66.bar/movie/zBB82J/AMeDHq/${movie.stream_id}.m3u8`,
             streamInfo: {
               name: movie.name,
               type: 'movie',

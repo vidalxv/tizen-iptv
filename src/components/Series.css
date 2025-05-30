@@ -1,138 +1,111 @@
-/* Container principal das séries */
-.series-page {
-  display: flex;
-  width: 100%;
-  height: 100vh;
-  background: #0a0a0a;
-  color: #ffffff;
-}
-
-.series-sidebar {
-  width: 300px;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
-  border-right: 1px solid rgba(255, 140, 0, 0.2);
-  overflow-y: auto;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Aplicar margens nos elementos filhos da sidebar */
-.series-sidebar > * {
-  margin: 0 20px; /* Margem lateral nos elementos filhos */
-}
-
-.series-sidebar > :first-child {
-  margin-top: 30px; /* Margem superior no primeiro elemento */
-}
-
-.series-sidebar > :last-child {
-  margin-bottom: 30px; /* Margem inferior no último elemento */
-}
-
-.series-sidebar h2 {
-  font-size: 1.8rem;
-  margin: 0 0 30px 0;
-  color: #FF8C00;
-  text-align: center;
-  border-bottom: 2px solid rgba(255, 140, 0, 0.3);
-  margin-bottom: 15px;
-}
-
-.series-main {
-  flex: 1;
-  overflow-y: auto;
-}
-
 /* Layout principal das séries */
 .series-container {
   width: 100%;
   height: 100vh;
-  background: #0a0a0a;
-  color: #ffffff;
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+  color: white;
   overflow: hidden;
 }
 
-.series-layout {
+.series-page {
   display: flex;
   gap: 20px;
   height: 100%;
 }
 
 /* Aplicar margens nos elementos filhos do layout principal */
-.series-layout > * {
+.series-page > * {
   margin: 20px 20px 20px 0; /* Margem nos elementos filhos */
 }
 
-.series-layout > :first-child {
+.series-page > :first-child {
   margin-left: 20px; /* Margem esquerda no primeiro elemento */
 }
 
-.series-layout > :last-child {
+.series-page > :last-child {
   margin-right: 20px; /* Margem direita no último elemento */
 }
 
 /* Estilos para a lista de categorias de séries */
-.series-categories {
+.series-sidebar {
   width: 260px;
   min-width: 260px;
-  background-color: #010d14;
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
   border-radius: 8px;
   overflow-y: auto;
   height: calc(100vh - 40px);
   scrollbar-width: none;
   display: flex;
   flex-direction: column;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
-/* Aplicar margens nos botões de categoria */
-.series-categories > * {
-  margin: 0 10px; /* Margem lateral nos elementos filhos */
-}
-
-.series-categories > :first-child {
-  margin-top: 10px; /* Margem superior no primeiro elemento */
-}
-
-.series-categories > :last-child {
-  margin-bottom: 10px; /* Margem inferior no último elemento */
-}
-
-.series-categories::-webkit-scrollbar {
+.series-sidebar::-webkit-scrollbar {
   display: none;
 }
 
-.series-categories .series-category-button {
-  display: block;
-  width: calc(100% - 20px); /* Ajustar largura considerando as margens */
-  background-color: transparent;
-  color: #fff;
-  border: none;
-  margin: 0 0 10px 0;
-  border-radius: 5px;
-  cursor: pointer;
-  text-align: left;
-  font-size: 1.5rem;
-  font-family: inherit;
-  transition: all 0.3s ease;
-  padding: 10px;
+.series-sidebar h2 {
+  font-size: 1.8rem;
+  margin: 20px 0 20px 0;
+  color: #FF8C00;
+  text-align: center;
+  border-bottom: 2px solid rgba(255, 140, 0, 0.3);
+  padding-bottom: 15px;
 }
 
-.series-categories .series-category-button:hover,
-.series-categories .series-category-button.focused {
-  outline: 2px solid #FF8C00;
-  transform: scale(1.02);
+.series-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.series-category-button {
+  display: block;
+  width: 100%;
+  background-color: #0c0c0c;
+  color: #cbd5e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 0 0 12px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 1.4rem;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.25s ease-in-out;
+  padding: 14px 18px;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.2), 
+              0 1px 1px rgba(255,255,255,0.05); /* Sombra interna sutil e brilho superior */
+  position: relative;
+}
+
+.series-category-button:hover,
+.series-category-button.focused {
+  background: linear-gradient(145deg, #2a303c, #3d4758); /* Fundo levemente mais claro no hover/focus */
+  color: #ffffff;
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.2),
+              0 4px 8px rgba(0,0,0,0.3),
+              0 0 12px rgba(255, 140, 0, 0.3); /* Sombra mais pronunciada e brilho laranja */
+  border-color: rgba(255, 140, 0, 0.7); /* Borda laranja no hover/focus */
+  outline: none;
 }
 
 /* Estilos para botões de categoria ativos */
-.series-categories .series-category-button.active {
-  font-weight: bold;
-  background-color: #FF8C00 !important;
-  color: #000 !important;
+.series-category-button.active {
+  background: linear-gradient(145deg, #FF8C00, #e67e00);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: inset 0 -2px 3px rgba(0,0,0,0.2),
+              0 3px 6px rgba(0,0,0,0.25),
+              0 0 15px rgba(255, 140, 0, 0.6);
+  transform: translateY(0) scale(1.01);
+  border-color: #FF8C00; /* Borda laranja sólida no estado ativo */
 }
 
 /* Estilos para a área de exibição das séries */
-.series-content {
+.series-main {
   flex: 1;
   background-color: rgba(20, 20, 20, 0.5);
   border-radius: 8px;
@@ -142,38 +115,74 @@
   margin: 15px;
 }
 
-.series-content::-webkit-scrollbar {
+.series-main::-webkit-scrollbar {
   display: none;
+}
+
+.series-content {
+  padding: 20px;
+  height: 100%;
+}
+
+/* Indicador de paginação */
+.pagination-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: rgba(255, 140, 0, 0.1);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 140, 0, 0.3);
+}
+
+.pagination-info span {
+  color: #FF8C00;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.series-count {
+  color: #e0e0e0 !important;
+  font-weight: 400 !important;
+  font-size: 0.9rem !important;
 }
 
 .series-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: 20px;
-  align-content: flex-start;
+  height: calc(100vh - 200px);
+  overflow: hidden;
+  align-items: stretch;
 }
 
 .serie {
-  position: relative;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
   border: 2px solid transparent;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .serie:hover,
 .serie.focused {
   transform: scale(1.05);
   border-color: #FF8C00;
-  box-shadow: 0 8px 20px rgba(255, 140, 0, 0.4);
+  box-shadow: 0 12px 24px rgba(255, 140, 0, 0.3);
+  z-index: 10;
 }
 
 .serie-poster {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -193,25 +202,11 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.7), transparent);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  padding: 20px;
   color: white;
   transform: translateY(100%);
   transition: transform 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Aplicar margens nos elementos filhos do overlay */
-.serie-overlay > * {
-  margin: 0 20px; /* Margem lateral nos elementos filhos */
-}
-
-.serie-overlay > :first-child {
-  margin-top: 20px; /* Margem superior no primeiro elemento */
-}
-
-.serie-overlay > :last-child {
-  margin-bottom: 20px; /* Margem inferior no último elemento */
 }
 
 .serie:hover .serie-overlay,
@@ -221,70 +216,54 @@
 
 .serie-title {
   font-size: 1.1rem;
-  font-weight: bold;
+  font-weight: 700;
   margin: 0 0 8px 0;
-  color: #FF8C00;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   line-height: 1.2;
 }
 
 .serie-info {
   display: flex;
-  gap: 15px;
   align-items: center;
-  margin-bottom: 10px;
-  font-size: 0.85rem;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
 }
 
-.serie-year,
-.serie-rating {
-  background: rgba(255, 140, 0, 0.2);
-  margin: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 3px 0;
-  text-align: center;
-  min-width: 40px;
+.serie-year {
+  color: #ffd700;
+  font-weight: 600;
 }
 
 .serie-rating {
-  background: rgba(255, 215, 0, 0.2);
-  color: #FFD700;
+  color: #ffa500;
+  font-weight: 600;
 }
 
 .serie-description {
   font-size: 0.85rem;
   line-height: 1.4;
-  overflow: hidden;
+  color: #e0e0e0;
+  margin-bottom: 10px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  margin: 0;
+  overflow: hidden;
 }
 
 .serie-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .action-hint {
-  background: rgba(255, 140, 0, 0.1);
-  color: #FF8C00;
-  margin: 4px 8px;
-  border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 500;
-  padding: 4px 0;
-  text-align: center;
-  min-width: 60px;
-}
-
-.series:hover .action-hint,
-.series.focused .action-hint {
-  background: rgba(255, 140, 0, 0.2);
-  border-color: rgba(255, 140, 0, 0.5);
+  color: #FF8C00;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Estados de loading */
@@ -295,74 +274,29 @@
   height: 200px;
   font-size: 1.2rem;
   color: #FF8C00;
-}
-
-.no-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
   width: 100%;
-  height: 200px;
-  font-size: 1.1rem;
-  color: #888;
-  text-align: center;
-  grid-column: 1 / -1;
 }
 
-/* Responsividade - Ajustada para margens ao invés de padding */
-@media (max-width: 1400px) {
-  .series-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-  
-  .serie-poster {
-    height: 280px;
-  }
-}
-
+/* Responsividade */
 @media (max-width: 1200px) {
   .series-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-  
-  .serie-poster {
-    height: 260px;
-  }
-  
-  .serie-title {
-    font-size: 1rem;
-  }
-  
-  /* Ajustar margens do layout em telas menores */
-  .series-layout > * {
-    margin: 15px 15px 15px 0;
-  }
-  
-  .series-layout > :first-child {
-    margin-left: 15px;
-  }
-  
-  .series-layout > :last-child {
-    margin-right: 15px;
-  }
-  
-  .series-content {
-    margin: 12px; /* Reduzir margin em telas menores */
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(3, 1fr);
   }
 }
 
 @media (max-width: 900px) {
-  .series-layout {
+  .series-page {
     flex-direction: column;
     gap: 15px;
   }
   
   /* Aplicar margens verticais quando layout muda para coluna */
-  .series-layout > * {
+  .series-page > * {
     margin: 0 15px 15px 15px;
   }
   
-  .series-categories {
+  .series-sidebar {
     width: 100%;
     min-width: auto;
     height: 150px;
@@ -374,89 +308,56 @@
   }
   
   /* Resetar margens das categorias em layout horizontal */
-  .series-categories > * {
+  .series-sidebar > * {
     margin: 10px 0; /* Margem vertical apenas */
   }
   
-  .series-categories > :first-child {
+  .series-sidebar > :first-child {
     margin-left: 10px;
   }
   
-  .series-categories > :last-child {
+  .series-sidebar > :last-child {
     margin-right: 10px;
   }
   
-  .series-categories .series-category-button {
+  .series-category-button {
     white-space: nowrap;
     min-width: 120px;
     margin-bottom: 0;
     width: auto; /* Resetar largura em layout horizontal */
   }
   
-  .series-content {
-    height: calc(100vh - 200px);
-  }
-  
   .series-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
-  
-  .serie-poster {
-    height: 220px;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
   }
 }
 
 @media (max-width: 600px) {
   .series-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  }
-  
-  .serie-poster {
-    height: 200px;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, 1fr);
   }
   
   .serie-title {
-    font-size: 0.95rem;
-  }
-  
-  .serie-info {
-    gap: 8px;
+    font-size: 1rem;
   }
   
   .serie-description {
     font-size: 0.8rem;
   }
   
-  .serie-overlay {
-    /* Reduzir margens em telas muito pequenas */
-  }
-  
-  .serie-overlay > * {
-    margin: 0 15px;
-  }
-  
-  .serie-overlay > :first-child {
-    margin-top: 15px;
-  }
-  
-  .serie-overlay > :last-child {
-    margin-bottom: 15px;
-  }
-  
-  /* Reduzir margens gerais em telas muito pequenas */
-  .series-layout > * {
+  /* Reduzir margens em telas muito pequenas */
+  .series-page > * {
     margin: 0 10px 10px 10px;
-  }
-  
-  .series-content {
-    margin: 10px;
   }
 }
 
+/* Animações de entrada */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -465,51 +366,21 @@
 }
 
 .serie {
-  animation: fadeInUp 0.6s ease-out forwards;
+  animation: fadeInUp 0.3s ease forwards;
 }
 
-.serie:nth-child(1) { animation-delay: 0.05s; }
-.serie:nth-child(2) { animation-delay: 0.1s; }
-.serie:nth-child(3) { animation-delay: 0.15s; }
-.serie:nth-child(4) { animation-delay: 0.2s; }
-.serie:nth-child(5) { animation-delay: 0.25s; }
-.serie:nth-child(6) { animation-delay: 0.3s; }
-.serie:nth-child(7) { animation-delay: 0.35s; }
-.serie:nth-child(8) { animation-delay: 0.4s; }
-
-/* Efeito de loading shimmer nos cards */
-.serie::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.serie:hover::before,
-.serie.focused::before {
-  left: 100%;
-}
-
-/* Placeholder para imagens que não carregaram */
-.serie-poster img[src=""],
-.serie-poster img:not([src]) {
-  background: linear-gradient(45deg, #333, #555);
-  background-size: 20px 20px;
-  background-image: 
-    repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.1) 10px, rgba(255,255,255,.1) 20px);
-  animation: loading 2s linear infinite;
-}
-
-@keyframes loading {
-  0% { background-position: 0 0; }
-  100% { background-position: 40px 40px; }
-} 
+.serie:nth-child(1) { animation-delay: 0.1s; }
+.serie:nth-child(2) { animation-delay: 0.15s; }
+.serie:nth-child(3) { animation-delay: 0.2s; }
+.serie:nth-child(4) { animation-delay: 0.25s; }
+.serie:nth-child(5) { animation-delay: 0.3s; }
+.serie:nth-child(6) { animation-delay: 0.35s; }
+.serie:nth-child(7) { animation-delay: 0.4s; }
+.serie:nth-child(8) { animation-delay: 0.45s; }
+.serie:nth-child(9) { animation-delay: 0.5s; }
+.serie:nth-child(10) { animation-delay: 0.55s; }
+.serie:nth-child(11) { animation-delay: 0.6s; }
+.serie:nth-child(12) { animation-delay: 0.65s; }
+.serie:nth-child(13) { animation-delay: 0.7s; }
+.serie:nth-child(14) { animation-delay: 0.75s; }
+.serie:nth-child(15) { animation-delay: 0.8s; } 

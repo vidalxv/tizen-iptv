@@ -12,6 +12,12 @@ const Series = ({ isActive }) => {
   const [focusArea, setFocusArea] = useState('categories'); // 'categories' ou 'series'
   const [categoryFocus, setCategoryFocus] = useState(0);
   const [seriesFocus, setSeriesFocus] = useState(0);
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(0);
+  const ITEMS_PER_PAGE = 15; // 5 colunas x 3 linhas
+  const GRID_COLUMNS = 5;
+  const GRID_ROWS = 3;
 
   // Referencias para navegação
   const categoriesRef = useRef([]);
@@ -49,6 +55,7 @@ const Series = ({ isActive }) => {
     const loadSeries = async (categoryId) => {
       setSeriesLoading(true);
       setSeriesFocus(0); // Reset series focus
+      setCurrentPage(0); // Reset para primeira página
       try {
         const response = await fetch(
           `${API_BASE_URL}?${API_CREDENTIALS}&action=get_series&category_id=${categoryId}`
@@ -77,7 +84,7 @@ const Series = ({ isActive }) => {
   // Atualizar foco visual
   const updateFocusVisual = useCallback(() => {
     // Remover foco de todos os elementos
-    document.querySelectorAll('.series, .series-category-button').forEach(el => {
+    document.querySelectorAll('.serie, .series-category-button').forEach(el => {
       el.classList.remove('focused');
     });
 
@@ -105,6 +112,7 @@ const Series = ({ isActive }) => {
   const loadSeries = useCallback(async (categoryId) => {
     setSeriesLoading(true);
     setSeriesFocus(0); // Reset series focus
+    setCurrentPage(0); // Reset para primeira página
     try {
       const response = await fetch(
         `${API_BASE_URL}?${API_CREDENTIALS}&action=get_series&category_id=${categoryId}`
@@ -155,7 +163,7 @@ const Series = ({ isActive }) => {
         if (firstEpisode) {
           const playEvent = new CustomEvent('playContent', {
             detail: {
-              streamUrl: `https://rota66.bar/series/zBB82J/AMeDHq/${firstEpisode.id || firstEpisode.stream_id}.mp4`,
+              streamUrl: `https://rota66.bar/series/zBB82J/AMeDHq/${firstEpisode.id || firstEpisode.stream_id}.m3u8`,
               streamInfo: {
                 name: `${series.name} - S${String(firstSeason).padStart(2, '0')}E${String(firstEpisode.episode_num || 1).padStart(2, '0')} - ${firstEpisode.title || firstEpisode.name || 'Episódio'}`,
                 type: 'series',
@@ -174,7 +182,7 @@ const Series = ({ isActive }) => {
       console.error('Erro ao carregar informações da série:', error);
       
       // Fallback: tentar reproduzir com URL genérica
-      const streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${series.series_id}.mp4`;
+      const streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${series.series_id}.m3u8`;
       
       const streamInfo = {
         name: series.name,
@@ -194,136 +202,124 @@ const Series = ({ isActive }) => {
   useEffect(() => {
     if (!isActive) return;
 
-    const handleKeyDown = (event) => {
-      switch (event.key) {
-        case 'ArrowUp':
-          event.preventDefault();
-          if (focusArea === 'categories') {
-            setCategoryFocus(prev => Math.max(0, prev - 1));
-          } else if (focusArea === 'series') {
-            const gridColumns = 5;
-            const currentRow = Math.floor(seriesFocus / gridColumns);
-            
-            if (currentRow > 0) {
-              const newFocus = Math.max(0, seriesFocus - gridColumns);
-              setSeriesFocus(newFocus);
-            } else {
-              // Voltar para categorias
-              setFocusArea('categories');
-              // Definir o foco na categoria atualmente selecionada
-              const selectedIndex = categories.findIndex(cat => cat.category_id === selectedCategory);
-              setCategoryFocus(selectedIndex >= 0 ? selectedIndex : 0);
-            }
-          }
-          break;
-
-        case 'ArrowDown':
-          event.preventDefault();
-          if (focusArea === 'categories') {
-            setCategoryFocus(prev => Math.min(categories.length - 1, prev + 1));
-          } else if (focusArea === 'series') {
-            const gridColumns = 5;
-            const currentRow = Math.floor(seriesFocus / gridColumns);
-            const totalRows = Math.ceil(series.length / gridColumns);
-            
-            if (currentRow < totalRows - 1) {
-              const newFocus = Math.min(series.length - 1, seriesFocus + gridColumns);
-              setSeriesFocus(newFocus);
-            }
-          }
-          break;
-
-        case 'ArrowLeft':
-          event.preventDefault();
-          if (focusArea === 'categories') {
-            // Na sidebar, seta esquerda não faz nada
-          } else if (focusArea === 'series') {
-            const gridColumns = 5;
-            const currentCol = seriesFocus % gridColumns;
-            
-            if (currentCol > 0) {
-              setSeriesFocus(seriesFocus - 1);
-            } else {
-              // Voltar para categorias quando na primeira coluna
-              setFocusArea('categories');
-              // Definir o foco na categoria atualmente selecionada
-              const selectedIndex = categories.findIndex(cat => cat.category_id === selectedCategory);
-              setCategoryFocus(selectedIndex >= 0 ? selectedIndex : 0);
-            }
-          }
-          break;
-
-        case 'ArrowRight':
-          event.preventDefault();
-          if (focusArea === 'categories') {
-            // Ir para séries se houver séries carregadas
-            if (series.length > 0) {
-              setFocusArea('series');
-              setSeriesFocus(0);
-            }
-          } else if (focusArea === 'series') {
-            const gridColumns = 5;
-            const currentCol = seriesFocus % gridColumns;
-            
-            if (currentCol < gridColumns - 1 && seriesFocus < series.length - 1) {
-              setSeriesFocus(seriesFocus + 1);
-            }
-          }
-          break;
-
-        case 'Enter':
-        case ' ':
-          event.preventDefault();
-          if (focusArea === 'categories') {
-            const selectedCat = categories[categoryFocus];
-            if (selectedCat) {
-              setSelectedCategory(selectedCat.category_id);
-              loadSeries(selectedCat.category_id);
-            }
-          } else if (focusArea === 'series') {
-            const selectedSeries = series[seriesFocus];
-            if (selectedSeries) {
-              handleSeriesDetails(selectedSeries);
-            }
-          }
-          break;
-
-        case 'Escape':
-        case 'Backspace':
-          event.preventDefault();
-          if (focusArea === 'series') {
-            // Voltar para categorias
-            setFocusArea('categories');
-            // Definir o foco na categoria atualmente selecionada
-            const selectedIndex = categories.findIndex(cat => cat.category_id === selectedCategory);
-            setCategoryFocus(selectedIndex >= 0 ? selectedIndex : 0);
-          }
-          break;
-
-        case 'p':
-        case 'P':
-          event.preventDefault();
-          if (focusArea === 'series') {
-            const selectedSeries = series[seriesFocus];
-            if (selectedSeries) {
-              handleSeriesSelect(selectedSeries);
-            }
-          }
-          break;
-
-        default:
-          break;
+    const handleSeriesNavigation = (event) => {
+      const { keyCode } = event.detail;
+      
+      if (focusArea === 'categories') {
+        handleCategoriesNavigation(keyCode);
+      } else if (focusArea === 'series') {
+        handleSeriesNavigationInternal(keyCode);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, focusArea, categoryFocus, seriesFocus, categories, series, selectedCategory, handleSeriesDetails, handleSeriesSelect, loadSeries]);
+    window.addEventListener('seriesNavigation', handleSeriesNavigation);
+    return () => window.removeEventListener('seriesNavigation', handleSeriesNavigation);
+  }, [isActive, focusArea, categoryFocus, seriesFocus, categories, series, selectedCategory]);
+
+  const handleCategoriesNavigation = (keyCode) => {
+    if (keyCode === 38) { // Cima
+      setCategoryFocus(prev => Math.max(0, prev - 1));
+    } else if (keyCode === 40) { // Baixo
+      setCategoryFocus(prev => Math.min(categories.length - 1, prev + 1));
+    } else if (keyCode === 37) { // Esquerda - voltar para sidebar
+      const backEvent = new CustomEvent('backToSidebar');
+      window.dispatchEvent(backEvent);
+    } else if (keyCode === 39) { // Direita - ir para séries
+      if (series.length > 0) {
+        setFocusArea('series');
+        setSeriesFocus(0);
+      }
+    } else if (keyCode === 13) { // OK - selecionar categoria
+      if (categories[categoryFocus]) {
+        const selectedCat = categories[categoryFocus];
+        setSelectedCategory(selectedCat.category_id);
+        loadSeries(selectedCat.category_id);
+      }
+    }
+  };
+
+  const handleSeriesNavigationInternal = (keyCode) => {
+    const currentPageSeriesCount = currentPageSeries.length;
+    
+    if (keyCode === 38) { // Cima
+      const currentRow = Math.floor(seriesFocus / GRID_COLUMNS);
+      
+      if (currentRow > 0) {
+        const newFocus = Math.max(0, seriesFocus - GRID_COLUMNS);
+        setSeriesFocus(newFocus);
+      } else {
+        // Se estiver na primeira linha e houver página anterior
+        if (currentPage > 0) {
+          setCurrentPage(currentPage - 1);
+          const currentCol = seriesFocus % GRID_COLUMNS;
+          setSeriesFocus((GRID_ROWS - 1) * GRID_COLUMNS + currentCol); // Ir para última linha da página anterior, mesma coluna
+        }
+      }
+    } else if (keyCode === 40) { // Baixo
+      const currentRow = Math.floor(seriesFocus / GRID_COLUMNS);
+      const maxRow = Math.floor((currentPageSeriesCount - 1) / GRID_COLUMNS);
+      
+      if (currentRow < maxRow) {
+        const newFocus = Math.min(currentPageSeriesCount - 1, seriesFocus + GRID_COLUMNS);
+        setSeriesFocus(newFocus);
+      } else {
+        // Se estiver na última linha e houver próxima página
+        if (currentPage < totalPages - 1) {
+          setCurrentPage(currentPage + 1);
+          setSeriesFocus(seriesFocus % GRID_COLUMNS); // Manter coluna, ir para primeira linha da próxima página
+        }
+      }
+    } else if (keyCode === 37) { // Esquerda
+      const currentCol = seriesFocus % GRID_COLUMNS;
+      
+      if (currentCol > 0) {
+        setSeriesFocus(seriesFocus - 1);
+      } else {
+        // Se estiver na primeira coluna, voltar para categorias
+        setFocusArea('categories');
+        const selectedIndex = categories.findIndex(cat => cat.category_id === selectedCategory);
+        setCategoryFocus(selectedIndex >= 0 ? selectedIndex : 0);
+      }
+    } else if (keyCode === 39) { // Direita
+      const currentCol = seriesFocus % GRID_COLUMNS;
+      
+      if (currentCol < GRID_COLUMNS - 1 && seriesFocus < currentPageSeriesCount - 1) {
+        setSeriesFocus(seriesFocus + 1);
+      } else {
+        // Se estiver na última coluna e houver próxima página
+        if (currentPage < totalPages - 1) {
+          setCurrentPage(currentPage + 1);
+          const newRow = Math.floor(seriesFocus / GRID_COLUMNS);
+          setSeriesFocus(newRow * GRID_COLUMNS); // Ir para primeira coluna da mesma linha na próxima página
+        }
+      }
+    } else if (keyCode === 13) { // OK - abrir detalhes
+      if (currentPageSeries[seriesFocus]) {
+        const actualSeriesIndex = currentPage * ITEMS_PER_PAGE + seriesFocus;
+        handleSeriesDetails(series[actualSeriesIndex]);
+      }
+    } else if (keyCode === 80) { // P - reproduzir diretamente
+      if (currentPageSeries[seriesFocus]) {
+        const actualSeriesIndex = currentPage * ITEMS_PER_PAGE + seriesFocus;
+        handleSeriesSelect(series[actualSeriesIndex]);
+      }
+    }
+  };
 
   // Função para tratar erros de imagem
   const handleImageError = (e) => {
     e.target.style.display = 'none';
   };
+
+  // Calcular séries da página atual
+  const getCurrentPageSeries = () => {
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return series.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(series.length / ITEMS_PER_PAGE);
+  const currentPageSeries = getCurrentPageSeries();
 
   if (!isActive) return null;
 
@@ -360,46 +356,59 @@ const Series = ({ isActive }) => {
           {seriesLoading ? (
             <div className="loading">Carregando séries...</div>
           ) : (
-            <div className="series-grid">
-              {series.map((series, index) => (
-                <div
-                  key={series.series_id}
-                  ref={el => seriesRef.current[index] = el}
-                  className="series"
-                  onClick={() => handleSeriesDetails(series)}
-                >
-                  <div className="series-poster">
-                    <img
-                      src={series.cover}
-                      alt={series.name}
-                      onError={handleImageError}
-                    />
-                    <div className="series-overlay">
-                      <h3 className="series-title">{series.name}</h3>
-                      <div className="series-info">
-                        <span className="series-year">{series.year || 'N/A'}</span>
-                        <span className="series-rating">
-                          ⭐ {series.rating || 'N/A'}
-                        </span>
-                      </div>
-                      <p className="series-description">
-                        {series.plot ? 
-                          (series.plot.length > 120 ? 
-                            series.plot.substring(0, 120) + '...' : 
-                            series.plot
-                          ) : 
-                          'Descrição não disponível'
-                        }
-                      </p>
-                      <div className="series-actions">
-                        <span className="action-hint">ENTER Ver detalhes</span>
-                        <span className="action-hint">P Reproduzir</span>
+            <>
+              {totalPages > 1 && (
+                <div className="pagination-info">
+                  <span>Página {currentPage + 1} de {totalPages}</span>
+                  <span className="series-count">
+                    {series.length} séries • {currentPageSeries.length} nesta página
+                  </span>
+                </div>
+              )}
+              <div className="series-grid">
+                {currentPageSeries.map((series, index) => (
+                  <div
+                    key={series.series_id}
+                    ref={el => seriesRef.current[index] = el}
+                    className="serie"
+                    onClick={() => {
+                      const actualSeriesIndex = currentPage * ITEMS_PER_PAGE + index;
+                      handleSeriesDetails(series[actualSeriesIndex]);
+                    }}
+                  >
+                    <div className="serie-poster">
+                      <img
+                        src={series.cover}
+                        alt={series.name}
+                        onError={handleImageError}
+                      />
+                      <div className="serie-overlay">
+                        <h3 className="serie-title">{series.name}</h3>
+                        <div className="serie-info">
+                          <span className="serie-year">{series.year || 'N/A'}</span>
+                          <span className="serie-rating">
+                            ⭐ {series.rating || 'N/A'}
+                          </span>
+                        </div>
+                        <p className="serie-description">
+                          {series.plot ? 
+                            (series.plot.length > 120 ? 
+                              series.plot.substring(0, 120) + '...' : 
+                              series.plot
+                            ) : 
+                            'Descrição não disponível'
+                          }
+                        </p>
+                        <div className="serie-actions">
+                          <span className="action-hint">ENTER Ver detalhes</span>
+                          <span className="action-hint">P Reproduzir</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
