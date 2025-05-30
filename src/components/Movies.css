@@ -86,7 +86,7 @@
 }
 
 /* Estilos para a área de exibição dos filmes */
-.vod-display {
+.content-grid {
   flex: 1;
   background-color: rgba(20, 20, 20, 0.5);
   border-radius: 8px;
@@ -100,11 +100,11 @@
   margin: 15px;
 }
 
-.vod-display::-webkit-scrollbar {
+.content-grid::-webkit-scrollbar {
   display: none;
 }
 
-.vod-display .movie {
+.content-grid .movie {
   background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
   border-radius: 8px;
   text-align: center;
@@ -121,22 +121,23 @@
   max-height: 320px;
 }
 
-.vod-display .movie:hover,
-.vod-display .movie.focused {
+.content-grid .movie:hover,
+.content-grid .movie.focused {
   transform: scale(1.05);
   border-color: #FF8C00;
   box-shadow: 0 8px 16px rgba(255, 140, 0, 0.3);
 }
 
-.vod-display .movie img {
+.content-grid .movie img {
   width: 100%;
   height: 240px;
   border-radius: 4px 4px 0 0;
   object-fit: cover;
   transition: transform 0.3s ease;
+  line-height: 1.2;
 }
 
-.vod-display .movie:hover img {
+.content-grid .movie:hover img {
   transform: scale(1.1);
 }
 
@@ -185,6 +186,7 @@
   height: 200px;
   font-size: 1.2rem;
   color: #FF8C00;
+  grid-column: 1 / -1;
 }
 
 .no-content {
@@ -201,17 +203,17 @@
 
 /* Responsividade - Ajustada para margens ao invés de padding */
 @media (max-width: 1200px) {
-  .vod-display {
+  .content-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     margin: 12px; /* Reduzir margin em telas menores */
   }
   
-  .vod-display .movie {
+  .content-grid .movie {
     min-height: 260px;
     max-height: 300px;
   }
   
-  .vod-display .movie img {
+  .content-grid .movie img {
     height: 220px;
   }
   
@@ -240,50 +242,22 @@
     margin: 0 15px 15px 15px;
   }
   
-  .vod-categories {
-    width: 100%;
-    min-width: auto;
-    height: 150px;
-    flex-direction: row;
-    display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-  
-  /* Resetar margens das categorias em layout horizontal */
-  .vod-categories > * {
-    margin: 10px 0; /* Margem vertical apenas */
-  }
-  
-  .vod-categories > :first-child {
-    margin-left: 10px;
-  }
-  
-  .vod-categories > :last-child {
-    margin-right: 10px;
-  }
-  
-  .vod-categories .vod-category-button {
-    white-space: nowrap;
-    min-width: 120px;
-    margin-bottom: 0;
-    width: auto; /* Resetar largura em layout horizontal */
-  }
+  /* .vod-categories agora será .category-sidebar, estilos já definidos em Series.css */
+
 }
 
 @media (max-width: 600px) {
-  .vod-display {
+  .content-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     margin: 10px; /* Margin menor em telas muito pequenas */
   }
   
-  .vod-display .movie {
+  .content-grid .movie {
     min-height: 240px;
     max-height: 280px;
   }
   
-  .vod-display .movie img {
+  .content-grid .movie img {
     height: 200px;
   }
   

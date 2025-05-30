@@ -228,6 +228,12 @@ const SeriesDetailsPage = ({ series, isActive, onBack }) => {
   }, [focusArea, focusedElement, seasonFocus, seasons, episodeFocus, episodes.length, actionElements, selectSeason]);
 
   const playEpisode = useCallback((episode) => {
+    // Log para debug - ver estrutura do episódio
+    console.log('Dados do episódio:', episode);
+    console.log('Episode ID:', episode.id);
+    console.log('Episode stream_id:', episode.stream_id);
+    console.log('Episode info:', episode.info);
+    
     const playEvent = new CustomEvent('playContent', {
       detail: {
         streamUrl: `https://rota66.bar/series/zBB82J/AMeDHq/${episode.id || episode.stream_id}.mp4`,
