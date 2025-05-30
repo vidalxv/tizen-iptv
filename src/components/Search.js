@@ -329,10 +329,10 @@ const Search = ({ isActive }) => {
     let streamUrl = '';
     let streamInfo = {};
 
-    // Construir URL e informações baseado no tipo
+    // Construir URL e informações baseado no tipo (estrutura correta da API)
     switch (type) {
       case 'channel':
-        streamUrl = `https://rota66.bar/live/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}.m3u8`;
+        streamUrl = `https://rota66.bar/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}`;
         streamInfo = {
           name: item.name,
           category: 'Canal',
@@ -342,7 +342,7 @@ const Search = ({ isActive }) => {
         break;
         
       case 'movie':
-        streamUrl = `https://rota66.bar/movie/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}.m3u8`;
+        streamUrl = `https://rota66.bar/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}`;
         streamInfo = {
           name: item.name,
           category: 'Filme',
@@ -354,8 +354,8 @@ const Search = ({ isActive }) => {
         break;
         
       case 'serie':
-        // Para séries da busca, usar URL genérica
-        streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.series_id}.m3u8`;
+        // Para séries da busca, usar URL genérica (estrutura correta)
+        streamUrl = `https://rota66.bar/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.series_id}`;
         streamInfo = {
           name: item.name,
           category: 'Série',

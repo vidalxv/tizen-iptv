@@ -161,9 +161,12 @@ const Series = ({ isActive }) => {
         const firstEpisode = data.episodes[firstSeason][0];
         
         if (firstEpisode) {
+          // URL com .mp4 para usar com HTML5 player
+          const streamUrl = `https://rota66.bar/series/zBB82J/AMeDHq/${firstEpisode.id || firstEpisode.stream_id}.mp4`;
+          
           const playEvent = new CustomEvent('playContent', {
             detail: {
-              streamUrl: `https://rota66.bar/series/zBB82J/AMeDHq/${firstEpisode.id || firstEpisode.stream_id}.m3u8`,
+              streamUrl,
               streamInfo: {
                 name: `${series.name} - S${String(firstSeason).padStart(2, '0')}E${String(firstEpisode.episode_num || 1).padStart(2, '0')} - ${firstEpisode.title || firstEpisode.name || 'Episódio'}`,
                 type: 'series',
@@ -181,8 +184,8 @@ const Series = ({ isActive }) => {
     } catch (error) {
       console.error('Erro ao carregar informações da série:', error);
       
-      // Fallback: tentar reproduzir com URL genérica
-      const streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${series.series_id}.m3u8`;
+      // Fallback: tentar reproduzir primeiro episódio com URL genérica
+      const streamUrl = `https://rota66.bar/series/zBB82J/AMeDHq/${series.series_id}.mp4`;
       
       const streamInfo = {
         name: series.name,
@@ -198,25 +201,18 @@ const Series = ({ isActive }) => {
     }
   }, [selectedCategory, categories, API_BASE_URL, API_CREDENTIALS]);
 
-  // Sistema de navegação por controle remoto
-  useEffect(() => {
-    if (!isActive) return;
+  // Calcular séries da página atual
+  const getCurrentPageSeries = useCallback(() => {
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return series.slice(startIndex, endIndex);
+  }, [currentPage, series]);
 
-    const handleSeriesNavigation = (event) => {
-      const { keyCode } = event.detail;
-      
-      if (focusArea === 'categories') {
-        handleCategoriesNavigation(keyCode);
-      } else if (focusArea === 'series') {
-        handleSeriesNavigationInternal(keyCode);
-      }
-    };
+  const totalPages = Math.ceil(series.length / ITEMS_PER_PAGE);
+  const currentPageSeries = getCurrentPageSeries();
 
-    window.addEventListener('seriesNavigation', handleSeriesNavigation);
-    return () => window.removeEventListener('seriesNavigation', handleSeriesNavigation);
-  }, [isActive, focusArea, categoryFocus, seriesFocus, categories, series, selectedCategory]);
-
-  const handleCategoriesNavigation = (keyCode) => {
+  // Função de navegação das categorias
+  const handleCategoriesNavigation = useCallback((keyCode) => {
     if (keyCode === 38) { // Cima
       setCategoryFocus(prev => Math.max(0, prev - 1));
     } else if (keyCode === 40) { // Baixo
@@ -236,9 +232,10 @@ const Series = ({ isActive }) => {
         loadSeries(selectedCat.category_id);
       }
     }
-  };
+  }, [categories, categoryFocus, series.length, loadSeries]);
 
-  const handleSeriesNavigationInternal = (keyCode) => {
+  // Função de navegação das séries
+  const handleSeriesNavigationInternal = useCallback((keyCode) => {
     const currentPageSeriesCount = currentPageSeries.length;
     
     if (keyCode === 38) { // Cima
@@ -304,38 +301,56 @@ const Series = ({ isActive }) => {
         handleSeriesSelect(series[actualSeriesIndex]);
       }
     }
-  };
+  }, [
+    currentPageSeries, 
+    seriesFocus, 
+    currentPage, 
+    totalPages, 
+    categories, 
+    selectedCategory,
+    series,
+    handleSeriesDetails,
+    handleSeriesSelect
+  ]);
+
+  // Sistema de navegação por controle remoto
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleSeriesNavigation = (event) => {
+      const { keyCode } = event.detail;
+      
+      if (focusArea === 'categories') {
+        handleCategoriesNavigation(keyCode);
+      } else if (focusArea === 'series') {
+        handleSeriesNavigationInternal(keyCode);
+      }
+    };
+
+    window.addEventListener('seriesNavigation', handleSeriesNavigation);
+    return () => window.removeEventListener('seriesNavigation', handleSeriesNavigation);
+  }, [isActive, focusArea, handleCategoriesNavigation, handleSeriesNavigationInternal]);
 
   // Função para tratar erros de imagem
   const handleImageError = (e) => {
     e.target.style.display = 'none';
   };
 
-  // Calcular séries da página atual
-  const getCurrentPageSeries = () => {
-    const startIndex = currentPage * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return series.slice(startIndex, endIndex);
-  };
-
-  const totalPages = Math.ceil(series.length / ITEMS_PER_PAGE);
-  const currentPageSeries = getCurrentPageSeries();
-
   if (!isActive) return null;
 
   return (
     <div className="series-page" ref={containerRef}>
-      <div className="series-sidebar">
-        <h2>Categorias de Séries</h2>
+      <div className="category-sidebar">
+        
         {loading ? (
           <div className="loading">Carregando categorias...</div>
         ) : (
-          <div className="series-categories">
+          <div className="category-list">
             {categories.map((category, index) => (
               <button
                 key={category.category_id}
                 ref={el => categoriesRef.current[index] = el}
-                className={`series-category-button ${
+                className={`category-button ${
                   selectedCategory === category.category_id ? 'active' : ''
                 }`}
                 onClick={() => {
@@ -351,7 +366,7 @@ const Series = ({ isActive }) => {
         )}
       </div>
       
-      <div className="series-main">
+      <div className="main-content-area">
         <div className="series-content">
           {seriesLoading ? (
             <div className="loading">Carregando séries...</div>

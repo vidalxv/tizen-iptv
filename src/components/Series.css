@@ -27,7 +27,7 @@
 }
 
 /* Estilos para a lista de categorias de séries */
-.series-sidebar {
+.category-sidebar {
   width: 260px;
   min-width: 260px;
   background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
@@ -41,11 +41,11 @@
   box-sizing: border-box;
 }
 
-.series-sidebar::-webkit-scrollbar {
+.category-sidebar::-webkit-scrollbar {
   display: none;
 }
 
-.series-sidebar h2 {
+.category-sidebar h2 {
   font-size: 1.8rem;
   margin: 20px 0 20px 0;
   color: #FF8C00;
@@ -54,13 +54,13 @@
   padding-bottom: 15px;
 }
 
-.series-categories {
+.category-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.series-category-button {
+.category-button {
   display: block;
   width: 100%;
   background-color: #0c0c0c;
@@ -80,8 +80,8 @@
   position: relative;
 }
 
-.series-category-button:hover,
-.series-category-button.focused {
+.category-button:hover,
+.category-button.focused {
   background: linear-gradient(145deg, #2a303c, #3d4758); /* Fundo levemente mais claro no hover/focus */
   color: #ffffff;
   transform: translateY(-2px) scale(1.01);
@@ -93,7 +93,7 @@
 }
 
 /* Estilos para botões de categoria ativos */
-.series-category-button.active {
+.category-button.active {
   background: linear-gradient(145deg, #FF8C00, #e67e00);
   color: #ffffff;
   font-weight: 600;
@@ -105,7 +105,7 @@
 }
 
 /* Estilos para a área de exibição das séries */
-.series-main {
+.main-content-area {
   flex: 1;
   background-color: rgba(20, 20, 20, 0.5);
   border-radius: 8px;
@@ -296,7 +296,7 @@
     margin: 0 15px 15px 15px;
   }
   
-  .series-sidebar {
+  .category-sidebar {
     width: 100%;
     min-width: auto;
     height: 150px;
@@ -308,19 +308,19 @@
   }
   
   /* Resetar margens das categorias em layout horizontal */
-  .series-sidebar > * {
+  .category-sidebar > * {
     margin: 10px 0; /* Margem vertical apenas */
   }
   
-  .series-sidebar > :first-child {
+  .category-sidebar > :first-child {
     margin-left: 10px;
   }
   
-  .series-sidebar > :last-child {
+  .category-sidebar > :last-child {
     margin-right: 10px;
   }
   
-  .series-category-button {
+  .category-button {
     white-space: nowrap;
     min-width: 120px;
     margin-bottom: 0;

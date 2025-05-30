@@ -1,21 +1,421 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import mpegts from 'mpegts.js';
 import './VideoPlayer.css';
 
 const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const initializingRef = useRef(false);
+  const errorTimeoutRef = useRef(null);
+  const retryTimeoutRef = useRef(null);
+  const previousStreamUrlRef = useRef(null); // Para evitar re-inicializações desnecessárias
+  
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Iniciando player...');
   const [error, setError] = useState(null);
-  const [showControls, setShowControls] = useState(true);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [controlsTimeout, setControlsTimeout] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playerType, setPlayerType] = useState(null);
 
-  // Estados para overlay
-  const [showOverlay, setShowOverlay] = useState(true);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // Função para detectar tipo de player necessário
+  const detectPlayerType = (url, info) => {
+    // TV ao vivo sempre usa mpegts
+    if (info?.type === 'live') {
+      return 'mpegts';
+    }
+    
+    // Séries e filmes (MP4) usam HTML5
+    if (info?.type === 'series' || info?.type === 'movie') {
+      return 'html5';
+    }
+    
+    // Fallback: detectar pela URL
+    if (url.includes('.mp4') || url.includes('series/') || url.includes('movie/')) {
+      return 'html5';
+    }
+    
+    // Padrão: mpegts para streams
+    return 'mpegts';
+  };
+
+  // Limpar timeouts ativos
+  const clearTimeouts = () => {
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
+    }
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+  };
+
+  // Função memoizada para inicialização
+  const initializeIfNeeded = useCallback(() => {
+    if (!isActive || !streamUrl || initializingRef.current) return;
+
+    // Verificar se a URL mudou, se não mudou e não há erro, não reinicializar
+    if (previousStreamUrlRef.current === streamUrl && !error) {
+      console.log('Mesma URL e sem erros, não reinicializar');
+      return;
+    }
+
+    // Verificar se já está reproduzindo para evitar reinicialização
+    // Usar refs para verificar status atual sem criar dependências
+    if (initializingRef.current) {
+      console.log('Já está inicializando, aguardando...');
+      return;
+    }
+
+    console.log('Iniciando reprodução:', streamUrl);
+    
+    // Limpar player anterior se existir e a URL mudou
+    if (previousStreamUrlRef.current !== streamUrl) {
+      console.log('URL mudou, limpando player anterior');
+      cleanupPlayer();
+    }
+    
+    previousStreamUrlRef.current = streamUrl; // Atualizar URL anterior
+    
+    const detectedPlayerType = detectPlayerType(streamUrl, streamInfo);
+    console.log('Tipo de player detectado:', detectedPlayerType);
+    setPlayerType(detectedPlayerType);
+    initializingRef.current = true;
+
+    // Função de inicialização integrada
+    const initPlayer = (type) => {
+      if (!videoRef.current || !streamUrl) {
+        console.log('Não é possível inicializar: elemento video ou URL ausente');
+        initializingRef.current = false;
+        return;
+      }
+
+      console.log(`Inicializando player ${type} com URL:`, streamUrl);
+      setIsLoading(true);
+      setLoadingMessage('Conectando ao servidor...');
+      setError(null);
+      setIsPlaying(false);
+      
+      // Limpar timeouts anteriores
+      clearTimeouts();
+
+      const videoElement = videoRef.current;
+
+      try {
+        if (type === 'html5') {
+          // Usar HTML5 para séries e filmes (MP4)
+          console.log('Usando HTML5 player para MP4');
+          
+          // Event listeners específicos para HTML5
+          const handleLoadStart = () => {
+            console.log('HTML5: Começou a carregar');
+            setLoadingMessage('Carregando vídeo...');
+            setIsLoading(true);
+            setError(null);
+          };
+
+          const handleLoadedData = () => {
+            console.log('HTML5: Dados carregados');
+            setLoadingMessage('Preparando reprodução...');
+          };
+
+          const handleCanPlay = () => {
+            console.log('HTML5: Pode reproduzir');
+            clearTimeouts();
+            setLoadingMessage('Iniciando reprodução...');
+          };
+
+          const handleCanPlayThrough = () => {
+            console.log('HTML5: Pode reproduzir completamente');
+            clearTimeouts();
+            setIsLoading(false);
+            setError(null);
+          };
+
+          const handlePlaying = () => {
+            console.log('HTML5: Reproduzindo');
+            clearTimeouts();
+            setIsPlaying(true);
+            setIsLoading(false);
+            setError(null);
+            initializingRef.current = false; // Inicialização concluída com sucesso
+          };
+
+          const handleWaiting = () => {
+            console.log('HTML5: Aguardando dados');
+            setLoadingMessage('Carregando mais dados...');
+            setIsLoading(true);
+          };
+
+          const handleError = (err) => {
+            console.error('Erro HTML5:', err);
+            clearTimeouts();
+            setError('Erro ao reproduzir vídeo');
+            setIsLoading(false);
+            setIsPlaying(false);
+            initializingRef.current = false; // Reset flag em caso de erro
+          };
+
+          const handleStalled = () => {
+            console.log('HTML5: Carregamento pausado');
+            setLoadingMessage('Reconectando...');
+          };
+
+          // Adicionar todos os event listeners
+          videoElement.addEventListener('loadstart', handleLoadStart);
+          videoElement.addEventListener('loadeddata', handleLoadedData);
+          videoElement.addEventListener('canplay', handleCanPlay);
+          videoElement.addEventListener('canplaythrough', handleCanPlayThrough);
+          videoElement.addEventListener('playing', handlePlaying);
+          videoElement.addEventListener('waiting', handleWaiting);
+          videoElement.addEventListener('error', handleError);
+          videoElement.addEventListener('stalled', handleStalled);
+
+          // Configurar timeout mais longo para HTML5 (10 segundos)
+          errorTimeoutRef.current = setTimeout(() => {
+            if (videoRef.current && initializingRef.current) {
+              console.log('Timeout HTML5: tentando reproduzir mesmo assim');
+              videoRef.current.play().catch(() => {
+                setError('Tempo limite excedido para carregar o vídeo');
+                setIsLoading(false);
+                initializingRef.current = false;
+              });
+            }
+          }, 10000);
+
+          // Configurar e carregar vídeo
+          videoElement.src = streamUrl;
+          videoElement.load();
+          
+          // Tentar reproduzir após dados carregados
+          videoElement.addEventListener('loadeddata', () => {
+            setTimeout(() => {
+              // Verificação de segurança antes de reproduzir HTML5
+              if (videoRef.current && initializingRef.current) {
+                videoRef.current.play().catch(err => {
+                  console.error('Erro no auto-play HTML5:', err);
+                  // Não mostrar erro imediatamente, aguardar timeout
+                });
+              } else {
+                console.log('Elemento video não disponível para auto-play HTML5');
+              }
+            }, 1000);
+          }, { once: true });
+
+        } else {
+          // Usar mpegts.js para TV ao vivo
+          console.log('Usando mpegts player para stream');
+          setLoadingMessage('Inicializando player de streaming...');
+          
+          const player = mpegts.createPlayer({
+            type: 'mpegts',
+            isLive: streamInfo?.type === 'live',
+            url: streamUrl
+          });
+
+          playerRef.current = player;
+
+          // Event listeners do mpegts
+          player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+            console.error('Erro mpegts:', errorType, errorDetail, errorInfo);
+            clearTimeouts();
+            setError('Erro ao reproduzir stream');
+            setIsLoading(false);
+            setIsPlaying(false);
+            initializingRef.current = false;
+          });
+
+          player.on(mpegts.Events.LOADING_COMPLETE, () => {
+            console.log('Carregamento mpegts completo');
+            setLoadingMessage('Iniciando reprodução...');
+          });
+
+          player.on(mpegts.Events.MEDIA_INFO, () => {
+            console.log('Informações de mídia mpegts carregadas');
+            setLoadingMessage('Preparando reprodução...');
+          });
+
+          // Event listeners do elemento video para mpegts
+          const handlePlaying = () => {
+            console.log('mpegts: Reproduzindo');
+            clearTimeouts();
+            setIsPlaying(true);
+            setIsLoading(false);
+            setError(null);
+            initializingRef.current = false; // Inicialização concluída com sucesso
+          };
+
+          const handleWaiting = () => {
+            console.log('mpegts: Aguardando dados');
+            setLoadingMessage('Aguardando dados do stream...');
+            setIsLoading(true);
+          };
+
+          videoElement.addEventListener('playing', handlePlaying);
+          videoElement.addEventListener('waiting', handleWaiting);
+
+          // Timeout para mpegts (8 segundos)
+          errorTimeoutRef.current = setTimeout(() => {
+            if (playerRef.current && videoRef.current && initializingRef.current) {
+              console.log('Timeout mpegts: tentando reproduzir mesmo assim');
+              playerRef.current.play().catch(() => {
+                setError('Tempo limite excedido para conectar ao stream');
+                setIsLoading(false);
+                initializingRef.current = false;
+              });
+            }
+          }, 8000);
+
+          // Anexar ao elemento video e carregar
+          player.attachMediaElement(videoElement);
+          player.load();
+
+          // Auto-play
+          setTimeout(() => {
+            // Verificação de segurança antes de reproduzir
+            if (playerRef.current && videoRef.current && initializingRef.current) {
+              playerRef.current.play().then(() => {
+                console.log('Reprodução mpegts iniciada');
+                setLoadingMessage('Reprodução iniciada');
+              }).catch(err => {
+                console.error('Erro no auto-play mpegts:', err);
+                // Não mostrar erro imediatamente, aguardar timeout
+              });
+            } else {
+              console.log('Player ou elemento video não disponível para auto-play');
+            }
+          }, 500);
+        }
+
+      } catch (err) {
+        console.error('Erro ao criar player:', err);
+        clearTimeouts();
+        setError('Erro ao inicializar player');
+        setIsLoading(false);
+        initializingRef.current = false;
+      }
+    };
+
+    // Chamar função de inicialização
+    initPlayer(detectedPlayerType);
+  }, [isActive, streamUrl, streamInfo]); // Removido isPlaying e error das dependências para evitar loop
+
+  // Função para limpar player
+  const cleanupPlayer = useCallback(() => {
+    // Limpar timeouts ativos
+    clearTimeouts();
+    
+    // Limpar event listeners do elemento video
+    if (videoRef.current) {
+      const videoElement = videoRef.current;
+      
+      try {
+        // Remover todos os event listeners HTML5
+        const events = ['loadstart', 'loadeddata', 'canplay', 'canplaythrough', 'playing', 'waiting', 'error', 'stalled'];
+        events.forEach(event => {
+          videoElement.removeEventListener(event, () => {});
+        });
+        
+        // Para HTML5, parar e limpar src com verificações de segurança
+        if (videoElement.pause && typeof videoElement.pause === 'function') {
+          videoElement.pause();
+        }
+        if (videoElement.src !== undefined) {
+          videoElement.src = '';
+        }
+        if (videoElement.load && typeof videoElement.load === 'function') {
+          videoElement.load();
+        }
+      } catch (err) {
+        console.log('Erro ao limpar listeners do video element:', err);
+      }
+    }
+
+    // Limpar player mpegts se existir
+    if (playerRef.current) {
+      try {
+        const player = playerRef.current;
+        
+        // Verificações de segurança para métodos do mpegts
+        if (player.isLoaded && typeof player.isLoaded === 'function' && player.isLoaded()) {
+          if (player.pause && typeof player.pause === 'function') {
+            player.pause();
+          }
+          if (player.unload && typeof player.unload === 'function') {
+            player.unload();
+          }
+        }
+        
+        // Remover event listeners com verificações
+        try { 
+          if (player.off && typeof player.off === 'function') {
+            player.off(mpegts.Events.ERROR); 
+          }
+        } catch (e) {
+          console.log('Erro ao remover listener ERROR:', e);
+        }
+        
+        try { 
+          if (player.off && typeof player.off === 'function') {
+            player.off(mpegts.Events.LOADING_COMPLETE); 
+          }
+        } catch (e) {
+          console.log('Erro ao remover listener LOADING_COMPLETE:', e);
+        }
+        
+        try { 
+          if (player.off && typeof player.off === 'function') {
+            player.off(mpegts.Events.MEDIA_INFO); 
+          }
+        } catch (e) {
+          console.log('Erro ao remover listener MEDIA_INFO:', e);
+        }
+        
+        // Detach e destroy com verificações
+        if (player.detachMediaElement && typeof player.detachMediaElement === 'function') {
+          player.detachMediaElement();
+        }
+        
+        if (player.destroy && typeof player.destroy === 'function') {
+          player.destroy();
+        }
+        
+        console.log('Player mpegts limpo com segurança');
+      } catch (err) {
+        console.error('Erro ao limpar player mpegts:', err);
+      }
+      
+      playerRef.current = null;
+    }
+    
+    setIsLoading(false);
+    setLoadingMessage('Iniciando player...');
+    setError(null);
+    setIsPlaying(false);
+    setPlayerType(null);
+    initializingRef.current = false; // Resetar flag
+    previousStreamUrlRef.current = null; // Resetar URL anterior
+  }, []); // Sem dependências pois usa apenas refs e setters de estado
+
+  // Função para voltar/sair
+  const handleBack = useCallback(() => {
+    cleanupPlayer();
+    if (onBack) {
+      onBack();
+    }
+  }, [cleanupPlayer, onBack]);
+
+  useEffect(() => {
+    // Só inicializar se realmente for necessário
+    if (isActive && streamUrl && !initializingRef.current) {
+      initializeIfNeeded();
+    }
+
+    return () => {
+      if (!isActive) {
+        cleanupPlayer();
+      }
+    };
+  }, [isActive, streamUrl, initializeIfNeeded, cleanupPlayer]);
 
   // Sistema de navegação por controle remoto
   useEffect(() => {
@@ -24,285 +424,35 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
     const handlePlayerNavigation = (event) => {
       const { keyCode } = event.detail;
       
-      // Mostrar controles quando navegar
-      showControlsTemporary();
-      
-      if (keyCode === 32 || keyCode === 13) { // Espaço ou OK - Play/Pause
-        togglePlayPause();
-      } else if (keyCode === 8 || keyCode === 10009) { // Back/Return
+      if (keyCode === 8 || keyCode === 10009) { // Back/Return
         handleBack();
-      } else if (keyCode === 38) { // Cima - Aumentar volume
-        adjustVolume(0.1);
-      } else if (keyCode === 40) { // Baixo - Diminuir volume
-        adjustVolume(-0.1);
-      } else if (keyCode === 77) { // M - Mute
-        toggleMute();
-      } else if (keyCode === 73) { // I - Toggle info overlay
-        setShowOverlay(prev => !prev);
       }
     };
 
     window.addEventListener('playerNavigation', handlePlayerNavigation);
     return () => window.removeEventListener('playerNavigation', handlePlayerNavigation);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, isPlaying, volume, isMuted]);
+  }, [isActive, handleBack]);
 
-  // Atualizar relógio
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Inicializar player quando componente fica ativo
-  useEffect(() => {
-    if (isActive && streamUrl) {
-      initializePlayer();
-    } else {
-      destroyPlayer();
-    }
-
-    return () => destroyPlayer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, streamUrl]);
-
-  // Auto-hide controles
-  useEffect(() => {
-    if (controlsTimeout) {
-      clearTimeout(controlsTimeout);
-    }
-    
-    if (showControls && isPlaying) {
-      const timeout = setTimeout(() => {
-        setShowControls(false);
-      }, 5000); // Esconder após 5 segundos
-      
-      setControlsTimeout(timeout);
-    }
-
-    return () => {
-      if (controlsTimeout) {
-        clearTimeout(controlsTimeout);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showControls, isPlaying]);
-
-  const initializePlayer = async () => {
-    if (!videoRef.current || !streamUrl) return;
-
-    setIsLoading(true);
+  const retryPlayback = () => {
+    console.log('Tentando reproduzir novamente...');
     setError(null);
-
-    try {
-      // Destruir player anterior se existir
-      destroyPlayer();
-
-      // Determinar se é um stream ao vivo ou vídeo on-demand
-      const isLiveStream = streamUrl.includes('.ts');
-      const isVideoFile = streamUrl.includes('.mp4') || streamUrl.includes('.m3u8');
-
-      if (isLiveStream) {
-        // Para streams .ts (canais ao vivo), usar mpegts.js
-        if (!mpegts.isSupported()) {
-          throw new Error('Seu navegador não suporta reprodução de streams MPEG-TS');
-        }
-
-        const player = mpegts.createPlayer({
-          type: 'mse',
-          isLive: true,
-          url: streamUrl
-        }, {
-          enableWorker: false,
-          lazyLoadMaxDuration: 3 * 60,
-          liveBufferLatencyChasing: true,
-          liveSync: true
-        });
-
-        // Event listeners do mpegts.js
-        player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-          console.error('Player error:', errorType, errorDetail, errorInfo);
-          setError('Erro ao reproduzir stream. Verifique a conexão.');
-          setIsLoading(false);
-        });
-
-        player.on(mpegts.Events.LOADING_COMPLETE, () => {
-          setIsLoading(false);
-        });
-
-        player.on(mpegts.Events.MEDIA_INFO, (mediaInfo) => {
-          console.log('Media info:', mediaInfo);
-        });
-
-        // Anexar ao elemento video
-        player.attachMediaElement(videoRef.current);
-        player.load();
-
-        // Salvar referência
-        playerRef.current = player;
-      } else if (isVideoFile) {
-        // Para arquivos de vídeo (.mp4), usar elemento video nativo
-        const videoElement = videoRef.current;
-        videoElement.src = streamUrl;
-        videoElement.load();
-        
-        // Não salvar referência do player para vídeos nativos
-        playerRef.current = null;
-      } else {
-        throw new Error('Formato de stream não suportado');
-      }
-
-      // Event listeners do elemento video (aplicados em ambos os casos)
-      const videoElement = videoRef.current;
-      
-      // Remover listeners antigos
-      videoElement.removeEventListener('loadstart', handleLoadStart);
-      videoElement.removeEventListener('canplay', handleCanPlay);
-      videoElement.removeEventListener('playing', handlePlaying);
-      videoElement.removeEventListener('pause', handlePause);
-      videoElement.removeEventListener('ended', handleEnded);
-      videoElement.removeEventListener('error', handleVideoError);
-      
-      // Adicionar listeners
-      videoElement.addEventListener('loadstart', handleLoadStart);
-      videoElement.addEventListener('canplay', handleCanPlay);
-      videoElement.addEventListener('playing', handlePlaying);
-      videoElement.addEventListener('pause', handlePause);
-      videoElement.addEventListener('ended', handleEnded);
-      videoElement.addEventListener('error', handleVideoError);
-
-    } catch (err) {
-      console.error('Failed to initialize player:', err);
-      setError(err.message || 'Erro ao inicializar player');
-      setIsLoading(false);
-    }
-  };
-
-  // Handlers para eventos do vídeo
-  const handleLoadStart = () => {
     setIsLoading(true);
-  };
-
-  const handleCanPlay = () => {
-    setIsLoading(false);
-    // Auto-play
-    if (videoRef.current) {
-      videoRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(err => {
-        console.error('Auto-play failed:', err);
-        setIsLoading(false);
-      });
-    }
-  };
-
-  const handlePlaying = () => {
-    setIsPlaying(true);
-    setIsLoading(false);
-  };
-
-  const handlePause = () => {
+    setLoadingMessage('Reiniciando player...');
     setIsPlaying(false);
-  };
-
-  const handleEnded = () => {
-    setIsPlaying(false);
-  };
-
-  const handleVideoError = (e) => {
-    console.error('Video error:', e);
-    setError('Erro ao reproduzir vídeo');
-    setIsLoading(false);
-  };
-
-  const destroyPlayer = () => {
-    // Remover listeners do elemento video
-    if (videoRef.current) {
-      const videoElement = videoRef.current;
-      videoElement.removeEventListener('loadstart', handleLoadStart);
-      videoElement.removeEventListener('canplay', handleCanPlay);
-      videoElement.removeEventListener('playing', handlePlaying);
-      videoElement.removeEventListener('pause', handlePause);
-      videoElement.removeEventListener('ended', handleEnded);
-      videoElement.removeEventListener('error', handleVideoError);
-    }
-
-    // Destruir player mpegts.js se existir
-    if (playerRef.current) {
-      try {
-        playerRef.current.pause();
-        playerRef.current.unload();
-        playerRef.current.detachMediaElement();
-        playerRef.current.destroy();
-      } catch (err) {
-        console.error('Error destroying player:', err);
-      } finally {
-        playerRef.current = null;
+    
+    // Reset da flag de inicialização para permitir nova inicialização
+    initializingRef.current = false;
+    
+    cleanupPlayer();
+    
+    retryTimeoutRef.current = setTimeout(() => {
+      if (isActive && streamUrl) {
+        const detectedPlayerType = detectPlayerType(streamUrl, streamInfo);
+        setPlayerType(detectedPlayerType);
+        setLoadingMessage('Conectando novamente...');
+        initializeIfNeeded();
       }
-    }
-    
-    setIsPlaying(false);
-    setIsLoading(false);
-  };
-
-  const togglePlayPause = () => {
-    if (!videoRef.current) return;
-
-    if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play().catch(err => {
-        console.error('Play failed:', err);
-        setError('Não foi possível reproduzir o vídeo');
-      });
-    }
-  };
-
-  const adjustVolume = (delta) => {
-    if (!videoRef.current) return;
-
-    const newVolume = Math.max(0, Math.min(1, volume + delta));
-    setVolume(newVolume);
-    videoRef.current.volume = newVolume;
-    
-    if (isMuted && newVolume > 0) {
-      setIsMuted(false);
-      videoRef.current.muted = false;
-    }
-  };
-
-  const toggleMute = () => {
-    if (!videoRef.current) return;
-
-    const newMuted = !isMuted;
-    setIsMuted(newMuted);
-    videoRef.current.muted = newMuted;
-  };
-
-  const handleBack = () => {
-    destroyPlayer();
-    if (onBack) {
-      onBack();
-    }
-  };
-
-  const showControlsTemporary = () => {
-    setShowControls(true);
-  };
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getVolumeIcon = () => {
-    if (isMuted || volume === 0) return 'fa-volume-mute';
-    if (volume < 0.5) return 'fa-volume-low';
-    return 'fa-volume-high';
+    }, 1000);
   };
 
   if (!isActive) return null;
@@ -314,112 +464,57 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
           ref={videoRef}
           className="video-element"
           autoPlay
-          muted={isMuted}
-          onMouseMove={showControlsTemporary}
-          onClick={showControlsTemporary}
+          playsInline
+          style={{ width: '100%', height: '100%' }}
         />
 
         {/* Loading Overlay */}
-        {isLoading && (
+        {isLoading && !isPlaying && (
           <div className="loading-overlay">
-            <div className="loading-spinner">
-              <i className="fa-solid fa-spinner fa-spin"></i>
-            </div>
-            <p>Carregando stream...</p>
+            <div className="loading-spinner">⏳</div>
+            <p className="loading-message">{loadingMessage}</p>
+            <p className="loading-player-info">
+              {playerType === 'html5' ? 'Player HTML5' : playerType === 'mpegts' ? 'Player mpegts.js' : 'Detectando...'}
+            </p>
+            {streamInfo && (
+              <p className="loading-content-info">
+                {streamInfo.type === 'series' ? 'Série' : 
+                 streamInfo.type === 'movie' ? 'Filme' : 
+                 streamInfo.type === 'live' ? 'TV ao Vivo' : 'Conteúdo'}
+              </p>
+            )}
           </div>
         )}
 
         {/* Error Overlay */}
-        {error && (
+        {error && !isPlaying && (
           <div className="error-overlay">
             <div className="error-content">
-              <i className="fa-solid fa-exclamation-triangle"></i>
-              <h3>Erro de Reprodução</h3>
+              <h3>Erro na Reprodução</h3>
               <p>{error}</p>
-              <button className="retry-button" onClick={initializePlayer}>
-                <i className="fa-solid fa-refresh"></i>
-                Tentar Novamente
-              </button>
+              <p className="player-info">Player usado: {playerType === 'html5' ? 'HTML5' : 'mpegts.js'}</p>
+              <div className="error-actions">
+                <button onClick={retryPlayback} className="retry-button">
+                  Tentar Novamente
+                </button>
+                <button onClick={handleBack} className="back-button">
+                  Voltar
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Info Overlay */}
-        {showOverlay && streamInfo && (
-          <div className="info-overlay">
+        {/* Stream Info Overlay */}
+        {streamInfo && isPlaying && (
+          <div className="stream-info-overlay">
             <div className="stream-info">
               <h2>{streamInfo.name}</h2>
               {streamInfo.category && (
-                <p className="stream-category">{streamInfo.category}</p>
+                <p className="category">{streamInfo.category}</p>
               )}
-              {streamInfo.description && (
-                <p className="stream-description">{streamInfo.description}</p>
-              )}
-            </div>
-            <div className="time-info">
-              <span className="current-time">{formatTime(currentTime)}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Controls Overlay */}
-        {showControls && (
-          <div className="controls-overlay">
-            <div className="controls-top">
-              <button className="back-button" onClick={handleBack}>
-                <i className="fa-solid fa-arrow-left"></i>
-                Voltar
-              </button>
-              <button className="info-button" onClick={() => setShowOverlay(!showOverlay)}>
-                <i className="fa-solid fa-info-circle"></i>
-                Info
-              </button>
-            </div>
-
-            <div className="controls-center">
-              <button className="play-pause-button" onClick={togglePlayPause}>
-                <i className={`fa-solid ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
-              </button>
-            </div>
-
-            <div className="controls-bottom">
-              <div className="volume-control">
-                <button className="mute-button" onClick={toggleMute}>
-                  <i className={`fa-solid ${getVolumeIcon()}`}></i>
-                </button>
-                <div className="volume-bar">
-                  <div 
-                    className="volume-fill" 
-                    style={{ width: `${isMuted ? 0 : volume * 100}%` }}
-                  ></div>
-                </div>
-                <span className="volume-text">
-                  {isMuted ? '0%' : `${Math.round(volume * 100)}%`}
-                </span>
-              </div>
-
-              <div className="player-info">
-                {isLoading && <span className="status">Carregando...</span>}
-                {!isLoading && !error && (
-                  <span className="status">
-                    {isPlaying ? 'Reproduzindo' : 'Pausado'}
-                  </span>
-                )}
-                {error && <span className="status error-status">Erro</span>}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Help Overlay (sempre visível quando controles estão visíveis) */}
-        {showControls && (
-          <div className="help-overlay">
-            <div className="help-text">
-              <span>OK/ESPAÇO: Play/Pause</span>
-              <span>↑↓: Volume</span>
-              <span>M: Mute</span>
-              <span>I: Info</span>
-              <span>VOLTAR: Sair</span>
+              <p className="player-info">Player: {playerType === 'html5' ? 'HTML5' : 'mpegts.js'}</p>
+              <p className="instructions">Pressione BACK para voltar</p>
             </div>
           </div>
         )}

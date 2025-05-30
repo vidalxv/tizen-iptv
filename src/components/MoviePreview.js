@@ -1,11 +1,66 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './MoviePreview.css';
 
 const MoviePreview = ({ movie, isVisible, onClose }) => {
   const [focusedElement, setFocusedElement] = useState('play');
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const navigableElements = ['play', 'favorite', 'close'];
+  // Memoizar array de elementos navegáveis para evitar re-criações
+  const navigableElements = useMemo(() => ['play', 'favorite', 'close'], []);
+
+  const handleAction = useCallback((action) => {
+    switch (action) {
+      case 'play':
+        // Disparar evento para reproduzir filme
+        const playEvent = new CustomEvent('playContent', {
+          detail: {
+            streamUrl: `https://rota66.bar/zBB82J/AMeDHq/${movie.stream_id}`,
+            streamInfo: {
+              name: movie.name,
+              type: 'movie',
+              category: movie.category_name || 'Filme',
+              description: movie.plot || 'Descrição não disponível',
+              year: movie.releasedate || 'N/A',
+              rating: movie.rating || 'N/A',
+              poster: movie.stream_icon
+            }
+          }
+        });
+        window.dispatchEvent(playEvent);
+        onClose();
+        break;
+      
+      case 'favorite':
+        toggleFavorite();
+        break;
+      
+      case 'close':
+        onClose();
+        break;
+      
+      default:
+        break;
+    }
+  }, [movie, onClose]);
+
+  const toggleFavorite = useCallback(() => {
+    const favorites = JSON.parse(localStorage.getItem('favorites') || '{}');
+    const movieKey = `movie_${movie.stream_id}`;
+    
+    if (favorites[movieKey]) {
+      delete favorites[movieKey];
+      setIsFavorite(false);
+    } else {
+      favorites[movieKey] = {
+        ...movie,
+        type: 'movie',
+        addedAt: new Date().toISOString()
+      };
+      setIsFavorite(true);
+    }
+    
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+  }, [movie]);
 
   const handleKeyDown = useCallback((event) => {
     if (!isVisible) return;
@@ -40,61 +95,7 @@ const MoviePreview = ({ movie, isVisible, onClose }) => {
       default:
         break;
     }
-  }, [focusedElement, isVisible, onClose]);
-
-  const handleAction = (action) => {
-    switch (action) {
-      case 'play':
-        // Disparar evento para reproduzir filme
-        const playEvent = new CustomEvent('playContent', {
-          detail: {
-            streamUrl: `https://rota66.bar/movie/zBB82J/AMeDHq/${movie.stream_id}.m3u8`,
-            streamInfo: {
-              name: movie.name,
-              type: 'movie',
-              category: movie.category_name || 'Filme',
-              description: movie.plot || 'Descrição não disponível',
-              year: movie.releasedate || 'N/A',
-              rating: movie.rating || 'N/A',
-              poster: movie.stream_icon
-            }
-          }
-        });
-        window.dispatchEvent(playEvent);
-        onClose();
-        break;
-      
-      case 'favorite':
-        toggleFavorite();
-        break;
-      
-      case 'close':
-        onClose();
-        break;
-      
-      default:
-        break;
-    }
-  };
-
-  const toggleFavorite = () => {
-    const favorites = JSON.parse(localStorage.getItem('favorites') || '{}');
-    const movieKey = `movie_${movie.stream_id}`;
-    
-    if (favorites[movieKey]) {
-      delete favorites[movieKey];
-      setIsFavorite(false);
-    } else {
-      favorites[movieKey] = {
-        ...movie,
-        type: 'movie',
-        addedAt: new Date().toISOString()
-      };
-      setIsFavorite(true);
-    }
-    
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-  };
+  }, [focusedElement, isVisible, onClose, handleAction, navigableElements, toggleFavorite]);
 
   useEffect(() => {
     if (isVisible) {
