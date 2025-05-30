@@ -44,7 +44,7 @@ export const TIZEN_CONFIG = {
       live: (username, password, streamId, format = 'ts') => 
         `https://rota66.bar/live/${username}/${password}/${streamId}.${format}`,
       movie: (username, password, streamId, format = 'mp4') => 
-        `https://rota66.bar/movie/${username}/${password}/${streamId}.${format}`,
+        `https://rota66.bar/${username}/${password}/${streamId}`,
       series: (username, password, streamId, format = 'mp4') => 
         `https://rota66.bar/series/${username}/${password}/${streamId}.${format}`
     }

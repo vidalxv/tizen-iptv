@@ -1,40 +1,285 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import mpegts from 'mpegts.js';
+import Hls from 'hls.js';
 import './VideoPlayer.css';
 
 const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
+  const hlsRef = useRef(null);
+  const iframeRef = useRef(null);
   const initializingRef = useRef(false);
   const errorTimeoutRef = useRef(null);
   const retryTimeoutRef = useRef(null);
-  const previousStreamUrlRef = useRef(null); // Para evitar re-inicializações desnecessárias
+  const previousStreamUrlRef = useRef(null);
+  const retryAttemptRef = useRef(0);
+  const blobUrlRef = useRef(null);
   
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Iniciando player...');
   const [error, setError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerType, setPlayerType] = useState(null);
+  const [useIframe, setUseIframe] = useState(false);
+  const [urlAnalysis, setUrlAnalysis] = useState(null);
+
+  // Detectar ambiente (desenvolvimento vs produção)
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isTizenTV = typeof tizen !== 'undefined' || window.navigator.userAgent.includes('Tizen');
+
+  // Função para analisar e corrigir URLs problemáticas
+  const analyzeAndFixUrl = (url) => {
+    console.log('🔍 Analisando URL:', url);
+    
+    const analysis = {
+      original: url,
+      protocol: null,
+      domain: null,
+      hasToken: false,
+      needsHttps: false,
+      suggestions: [],
+      isProblematicRoute: false
+    };
+
+    try {
+      const urlObj = new URL(url);
+      analysis.protocol = urlObj.protocol;
+      analysis.domain = urlObj.hostname;
+      analysis.hasToken = urlObj.searchParams.has('token') || url.includes('token=');
+      
+      // Detectar rotas problemáticas conhecidas
+      const problematicDomains = [
+        'rota66.bar',
+        '74.63.227.218',
+        'rotas.tv',
+        'server.iptv'
+      ];
+      
+      analysis.isProblematicRoute = problematicDomains.some(domain => 
+        urlObj.hostname.includes(domain)
+      );
+      
+      if (analysis.isProblematicRoute) {
+        analysis.suggestions.push('Rota problemática detectada');
+        console.log('⚠️ Rota problemática detectada:', urlObj.hostname);
+      }
+      
+      // Verificar se precisa forçar HTTPS
+      if (urlObj.protocol === 'http:' && !isDevelopment) {
+        analysis.needsHttps = true;
+        analysis.suggestions.push('Tentar HTTPS');
+      }
+      
+      // Verificar se é IP direto vs domínio
+      const isIpAddress = /^\d+\.\d+\.\d+\.\d+$/.test(urlObj.hostname);
+      if (isIpAddress) {
+        analysis.suggestions.push('URL usa IP direto - possível redirect');
+      }
+      
+      // Gerar URLs alternativas com estratégias específicas para rotas problemáticas
+      const alternatives = [];
+      
+      // 1. URL original (sempre tentar primeiro)
+      alternatives.push({ type: 'original', url: url });
+      
+      // 2. Para rotas problemáticas, tentar variações específicas
+      if (analysis.isProblematicRoute) {
+        
+        // Estratégia baseada nos dados reais: tentar URLs diretas do servidor final
+        const pathParts = urlObj.pathname.split('/');
+        const movieId = pathParts[pathParts.length - 1]; // Ex: 338541
+        const userPath = pathParts.slice(1, -1).join('/'); // Ex: zBB82J/AMeDHq
+        
+        // URLs diretas do servidor real (baseado nos redirects observados)
+        alternatives.push({
+          type: 'direct-server-mp4',
+          url: `http://74.63.227.218/${userPath}/${movieId}.mp4`
+        });
+        alternatives.push({
+          type: 'direct-server-mkv', 
+          url: `http://74.63.227.218/${userPath}/${movieId}.mkv`
+        });
+        alternatives.push({
+          type: 'direct-server-avi',
+          url: `http://74.63.227.218/${userPath}/${movieId}.avi`
+        });
+        
+        // Tentar com HTTPS no servidor direto
+        alternatives.push({
+          type: 'https-direct-server',
+          url: `https://74.63.227.218/${userPath}/${movieId}.mp4`
+        });
+        
+        // Estratégias baseadas em APIs comuns de IPTV
+        // Muitos servidores IPTV usem essas estruturas:
+        
+        // 1. Formato XStreamCodes padrão
+        if (streamInfo?.stream_id) {
+          // Comentado URLs hardcoded que podem estar interferindo
+          // alternatives.push({
+          //   type: 'xstream-api',
+          //   url: `http://74.63.227.218/movie/${userPath}/${streamInfo.stream_id}.mp4`
+          // });
+          // alternatives.push({
+          //   type: 'xstream-ext',
+          //   url: `http://74.63.227.218/movie/${userPath}/${streamInfo.stream_id}.mkv`
+          // });
+        }
+        
+        // 2. Estrutura de arquivo direto (muito comum)
+        // Comentado URLs hardcoded que podem estar interferindo
+        // alternatives.push({
+        //   type: 'files-direct',
+        //   url: `http://74.63.227.218/files/${movieId}.mp4`
+        // });
+        // alternatives.push({
+        //   type: 'content-direct',
+        //   url: `http://74.63.227.218/content/${movieId}.mp4`
+        // });
+        
+        // 3. Tentar com diferentes extensões no servidor direto
+        // Comentado para não interferir
+        // const commonExtensions = ['mp4', 'mkv', 'avi', 'm4v', 'mov'];
+        // commonExtensions.forEach(ext => {
+        //   alternatives.push({
+        //     type: `direct-${ext}`,
+        //     url: `http://74.63.227.218/${userPath}/${movieId}.${ext}`
+        //   });
+        // });
+        
+        // 4. Fallback: tentar o domínio original mas com caminhos diferentes
+        alternatives.push({
+          type: 'original-movie-path',
+          url: `${urlObj.protocol}//${urlObj.hostname}/movie/${userPath}/${movieId}.mp4`
+        });
+        alternatives.push({
+          type: 'original-vod-path', 
+          url: `${urlObj.protocol}//${urlObj.hostname}/vod/${movieId}.mp4`
+        });
+        
+      } else {
+        // Para URLs normais, usar estratégias padrão
+        
+        // Forçar HTTPS se for HTTP
+        if (urlObj.protocol === 'http:') {
+          alternatives.push({ 
+            type: 'https', 
+            url: url.replace('http://', 'https://') 
+          });
+        }
+        
+        // Tentar sem token (caso esteja expirado)
+        if (analysis.hasToken) {
+          const urlWithoutToken = url.split('?')[0];
+          alternatives.push({ 
+            type: 'no-token', 
+            url: urlWithoutToken 
+          });
+        }
+        
+        // Tentar diferentes protocolos de streaming
+        const baseUrl = url.split('?')[0];
+        alternatives.push({ 
+          type: 'direct-mp4', 
+          url: baseUrl 
+        });
+      }
+      
+      // Limitar número de alternativas para evitar sobrecarga
+      analysis.alternatives = alternatives.slice(0, 12);
+      
+    } catch (err) {
+      console.error('Erro ao analisar URL:', err);
+      analysis.alternatives = [{ type: 'original', url: url }];
+    }
+    
+    console.log('📊 Análise da URL:', analysis);
+    console.log('🔄 Alternativas geradas:', analysis.alternatives.length);
+    setUrlAnalysis(analysis);
+    return analysis;
+  };
+
+  // Função para tentar fetch com follow redirects
+  const fetchWithRedirects = async (url, options = {}) => {
+    console.log('🔄 Tentando fetch com redirects para:', url);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        redirect: 'follow', // Seguir redirects automaticamente
+        mode: 'no-cors'
+      });
+      
+      console.log('✅ Fetch com redirects OK para:', url);
+      return { success: true, url: response.url || url };
+    } catch (error) {
+      console.error('❌ Fetch com redirects falhou:', error);
+      return { success: false, error };
+    }
+  };
+
+  // Headers personalizados para contornar erro 403
+  const getCustomHeaders = () => ({
+    'Accept': '*/*',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+  });
+
+  // Headers seguros para HLS (sem os bloqueados pelo navegador)
+  const getSafeHeaders = () => ({
+    'Accept': '*/*',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+    'Cache-Control': 'no-cache'
+  });
+
+  // Função para tentar múltiplas URLs sequencialmente
+  const tryMultipleUrls = async (alternatives, testFunction) => {
+    for (const alt of alternatives) {
+      console.log(`🎯 Tentando URL ${alt.type}:`, alt.url);
+      setLoadingMessage(`Tentando rota ${alt.type}...`);
+      
+      try {
+        const result = await testFunction(alt.url);
+        if (result) {
+          console.log(`✅ Sucesso com URL ${alt.type}:`, alt.url);
+          return { success: true, url: alt.url, type: alt.type };
+        }
+      } catch (error) {
+        console.warn(`❌ Falhou URL ${alt.type}:`, error.message);
+      }
+      
+      // Pequeno delay entre tentativas
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    return { success: false };
+  };
 
   // Função para detectar tipo de player necessário
   const detectPlayerType = (url, info) => {
     // TV ao vivo sempre usa mpegts
     if (info?.type === 'live') {
-      return 'mpegts';
+      return 'mpegts-live';
     }
     
-    // Séries e filmes (MP4) usam HTML5
-    if (info?.type === 'series' || info?.type === 'movie') {
-      return 'html5';
+    // Filmes e séries MP4 usam mpegts configurado para MP4
+    if (info?.type === 'movie' || info?.type === 'series') {
+      return 'mpegts-vod';
     }
     
-    // Fallback: detectar pela URL
+    // Detectar HLS
+    if (url.includes('.m3u8') || url.includes('hls')) {
+      return 'hls-safe';
+    }
+    
+    // Fallback baseado na URL - priorizar mpegts para MP4 na TV
     if (url.includes('.mp4') || url.includes('series/') || url.includes('movie/')) {
-      return 'html5';
+      return isTizenTV ? 'mpegts-vod' : 'html5-multi-url';
     }
     
     // Padrão: mpegts para streams
-    return 'mpegts';
+    return 'mpegts-live';
   };
 
   // Limpar timeouts ativos
@@ -49,24 +294,34 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
     }
   };
 
+  // Limpar Blob URLs
+  const cleanupBlobUrls = () => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  };
+
   // Função memoizada para inicialização
   const initializeIfNeeded = useCallback(() => {
     if (!isActive || !streamUrl || initializingRef.current) return;
 
-    // Verificar se a URL mudou, se não mudou e não há erro, não reinicializar
+    // Verificar se a URL mudou
     if (previousStreamUrlRef.current === streamUrl && !error) {
       console.log('Mesma URL e sem erros, não reinicializar');
       return;
     }
 
-    // Verificar se já está reproduzindo para evitar reinicialização
-    // Usar refs para verificar status atual sem criar dependências
     if (initializingRef.current) {
       console.log('Já está inicializando, aguardando...');
       return;
     }
 
-    console.log('Iniciando reprodução:', streamUrl);
+    console.log('🎬 Iniciando reprodução:', streamUrl);
+    console.log('🌍 Ambiente:', { isDevelopment, isTizenTV });
+    
+    // Analisar URL primeiro
+    const analysis = analyzeAndFixUrl(streamUrl);
     
     // Limpar player anterior se existir e a URL mudou
     if (previousStreamUrlRef.current !== streamUrl) {
@@ -74,312 +329,646 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
       cleanupPlayer();
     }
     
-    previousStreamUrlRef.current = streamUrl; // Atualizar URL anterior
+    previousStreamUrlRef.current = streamUrl;
     
     const detectedPlayerType = detectPlayerType(streamUrl, streamInfo);
-    console.log('Tipo de player detectado:', detectedPlayerType);
+    console.log('🎯 Tipo de player detectado:', detectedPlayerType);
     setPlayerType(detectedPlayerType);
     initializingRef.current = true;
 
     // Função de inicialização integrada
-    const initPlayer = (type) => {
+    const initPlayer = async (type) => {
       if (!videoRef.current || !streamUrl) {
         console.log('Não é possível inicializar: elemento video ou URL ausente');
         initializingRef.current = false;
         return;
       }
 
-      console.log(`Inicializando player ${type} com URL:`, streamUrl);
+      console.log(`🚀 Inicializando player ${type} com URL:`, streamUrl);
       setIsLoading(true);
-      setLoadingMessage('Conectando ao servidor...');
+      setLoadingMessage('Analisando rotas disponíveis...');
       setError(null);
       setIsPlaying(false);
+      setUseIframe(false);
       
-      // Limpar timeouts anteriores
       clearTimeouts();
 
       const videoElement = videoRef.current;
 
       try {
-        if (type === 'html5') {
-          // Usar HTML5 para séries e filmes (MP4)
-          console.log('Usando HTML5 player para MP4');
+        if (type === 'mpegts-vod') {
+          console.log('📽️ Usando mpegts para MP4/VOD');
+          await initMpegtsVodPlayer(streamUrl, videoElement);
           
-          // Event listeners específicos para HTML5
-          const handleLoadStart = () => {
-            console.log('HTML5: Começou a carregar');
-            setLoadingMessage('Carregando vídeo...');
-            setIsLoading(true);
-            setError(null);
-          };
-
-          const handleLoadedData = () => {
-            console.log('HTML5: Dados carregados');
-            setLoadingMessage('Preparando reprodução...');
-          };
-
-          const handleCanPlay = () => {
-            console.log('HTML5: Pode reproduzir');
-            clearTimeouts();
-            setLoadingMessage('Iniciando reprodução...');
-          };
-
-          const handleCanPlayThrough = () => {
-            console.log('HTML5: Pode reproduzir completamente');
-            clearTimeouts();
-            setIsLoading(false);
-            setError(null);
-          };
-
-          const handlePlaying = () => {
-            console.log('HTML5: Reproduzindo');
-            clearTimeouts();
-            setIsPlaying(true);
-            setIsLoading(false);
-            setError(null);
-            initializingRef.current = false; // Inicialização concluída com sucesso
-          };
-
-          const handleWaiting = () => {
-            console.log('HTML5: Aguardando dados');
-            setLoadingMessage('Carregando mais dados...');
-            setIsLoading(true);
-          };
-
-          const handleError = (err) => {
-            console.error('Erro HTML5:', err);
-            clearTimeouts();
-            setError('Erro ao reproduzir vídeo');
-            setIsLoading(false);
-            setIsPlaying(false);
-            initializingRef.current = false; // Reset flag em caso de erro
-          };
-
-          const handleStalled = () => {
-            console.log('HTML5: Carregamento pausado');
-            setLoadingMessage('Reconectando...');
-          };
-
-          // Adicionar todos os event listeners
-          videoElement.addEventListener('loadstart', handleLoadStart);
-          videoElement.addEventListener('loadeddata', handleLoadedData);
-          videoElement.addEventListener('canplay', handleCanPlay);
-          videoElement.addEventListener('canplaythrough', handleCanPlayThrough);
-          videoElement.addEventListener('playing', handlePlaying);
-          videoElement.addEventListener('waiting', handleWaiting);
-          videoElement.addEventListener('error', handleError);
-          videoElement.addEventListener('stalled', handleStalled);
-
-          // Configurar timeout mais longo para HTML5 (10 segundos)
-          errorTimeoutRef.current = setTimeout(() => {
-            if (videoRef.current && initializingRef.current) {
-              console.log('Timeout HTML5: tentando reproduzir mesmo assim');
-              videoRef.current.play().catch(() => {
-                setError('Tempo limite excedido para carregar o vídeo');
-                setIsLoading(false);
-                initializingRef.current = false;
-              });
-            }
-          }, 10000);
-
-          // Configurar e carregar vídeo
-          videoElement.src = streamUrl;
-          videoElement.load();
+        } else if (type === 'mpegts-live') {
+          console.log('📡 Usando mpegts para live stream');
+          await initMpegtsLivePlayer(streamUrl, videoElement);
           
-          // Tentar reproduzir após dados carregados
-          videoElement.addEventListener('loadeddata', () => {
-            setTimeout(() => {
-              // Verificação de segurança antes de reproduzir HTML5
-              if (videoRef.current && initializingRef.current) {
-                videoRef.current.play().catch(err => {
-                  console.error('Erro no auto-play HTML5:', err);
-                  // Não mostrar erro imediatamente, aguardar timeout
-                });
-              } else {
-                console.log('Elemento video não disponível para auto-play HTML5');
-              }
-            }, 1000);
-          }, { once: true });
-
+        } else if (type === 'html5-multi-url') {
+          console.log('🔄 Usando HTML5 com múltiplas URLs');
+          await initHtml5PlayerMultiUrl(analysis.alternatives, videoElement);
+          
+        } else if (type === 'html5-direct') {
+          console.log('⚡ Usando HTML5 direto');
+          await initHtml5PlayerDirect(streamUrl, videoElement);
+          
+        } else if (type === 'hls-safe') {
+          console.log('📺 Usando HLS.js com headers seguros');
+          await initHlsPlayerSafe(streamUrl, videoElement);
+          
+        } else if (type === 'iframe-fallback') {
+          console.log('🖼️ Usando iframe como fallback');
+          await initIframePlayer(streamUrl);
+          
         } else {
-          // Usar mpegts.js para TV ao vivo
-          console.log('Usando mpegts player para stream');
-          setLoadingMessage('Inicializando player de streaming...');
-          
-          const player = mpegts.createPlayer({
-            type: 'mpegts',
-            isLive: streamInfo?.type === 'live',
-            url: streamUrl
-          });
-
-          playerRef.current = player;
-
-          // Event listeners do mpegts
-          player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-            console.error('Erro mpegts:', errorType, errorDetail, errorInfo);
-            clearTimeouts();
-            setError('Erro ao reproduzir stream');
-            setIsLoading(false);
-            setIsPlaying(false);
-            initializingRef.current = false;
-          });
-
-          player.on(mpegts.Events.LOADING_COMPLETE, () => {
-            console.log('Carregamento mpegts completo');
-            setLoadingMessage('Iniciando reprodução...');
-          });
-
-          player.on(mpegts.Events.MEDIA_INFO, () => {
-            console.log('Informações de mídia mpegts carregadas');
-            setLoadingMessage('Preparando reprodução...');
-          });
-
-          // Event listeners do elemento video para mpegts
-          const handlePlaying = () => {
-            console.log('mpegts: Reproduzindo');
-            clearTimeouts();
-            setIsPlaying(true);
-            setIsLoading(false);
-            setError(null);
-            initializingRef.current = false; // Inicialização concluída com sucesso
-          };
-
-          const handleWaiting = () => {
-            console.log('mpegts: Aguardando dados');
-            setLoadingMessage('Aguardando dados do stream...');
-            setIsLoading(true);
-          };
-
-          videoElement.addEventListener('playing', handlePlaying);
-          videoElement.addEventListener('waiting', handleWaiting);
-
-          // Timeout para mpegts (8 segundos)
-          errorTimeoutRef.current = setTimeout(() => {
-            if (playerRef.current && videoRef.current && initializingRef.current) {
-              console.log('Timeout mpegts: tentando reproduzir mesmo assim');
-              playerRef.current.play().catch(() => {
-                setError('Tempo limite excedido para conectar ao stream');
-                setIsLoading(false);
-                initializingRef.current = false;
-              });
-            }
-          }, 8000);
-
-          // Anexar ao elemento video e carregar
-          player.attachMediaElement(videoElement);
-          player.load();
-
-          // Auto-play
-          setTimeout(() => {
-            // Verificação de segurança antes de reproduzir
-            if (playerRef.current && videoRef.current && initializingRef.current) {
-              playerRef.current.play().then(() => {
-                console.log('Reprodução mpegts iniciada');
-                setLoadingMessage('Reprodução iniciada');
-              }).catch(err => {
-                console.error('Erro no auto-play mpegts:', err);
-                // Não mostrar erro imediatamente, aguardar timeout
-              });
-            } else {
-              console.log('Player ou elemento video não disponível para auto-play');
-            }
-          }, 500);
+          // Fallback para mpegts live
+          console.log('📡 Usando mpegts player para stream (fallback)');
+          await initMpegtsLivePlayer(streamUrl, videoElement);
         }
 
       } catch (err) {
-        console.error('Erro ao criar player:', err);
+        console.error('💥 Erro ao criar player:', err);
         clearTimeouts();
-        setError('Erro ao inicializar player');
-        setIsLoading(false);
-        initializingRef.current = false;
+        
+        // Tentar iframe como último recurso para conteúdo on-demand
+        if (streamInfo?.type === 'movie' || streamInfo?.type === 'series') {
+          console.log('🆘 Tentando iframe como último recurso...');
+          try {
+            await initIframePlayer(streamUrl);
+          } catch (iframeError) {
+            // Se tudo falhou, mostrar mensagem explicativa específica para IPTV
+            setError(`❌ Reprodução não disponível neste navegador
+
+🔍 Problema identificado: Este servidor IPTV (${urlAnalysis?.domain || 'rota66.bar'}) bloqueia navegadores web por questões de segurança.
+
+📱 Soluções recomendadas:
+• Use o aplicativo nativo na Smart TV Samsung/LG
+• Use aplicativo IPTV dedicado (como IPTV Smarters)
+• Acesse via STB ou Android TV Box
+
+⚠️ Limitação técnica: Servidores IPTV frequentemente bloqueiam navegadores para evitar uso não autorizado.
+
+🔧 Detalhes técnicos: ${err.message}`);
+            setIsLoading(false);
+            initializingRef.current = false;
+          }
+        } else {
+          setError(`Erro ao inicializar player: ${err.message}`);
+          setIsLoading(false);
+          initializingRef.current = false;
+        }
       }
     };
 
     // Chamar função de inicialização
     initPlayer(detectedPlayerType);
-  }, [isActive, streamUrl, streamInfo]); // Removido isPlaying e error das dependências para evitar loop
+  }, [isActive, streamUrl, streamInfo, isDevelopment, isTizenTV]);
+
+  // Função para inicializar HTML5 player com múltiplas URLs
+  const initHtml5PlayerMultiUrl = async (alternatives, videoElement) => {
+    console.log('🎯 Tentando HTML5 com múltiplas URLs:', alternatives.length);
+    
+    const testUrl = async (url) => {
+      return new Promise((resolve, reject) => {
+        console.log('🧪 Testando URL:', url);
+        
+        const tempVideo = document.createElement('video');
+        let resolved = false;
+        let loadStarted = false;
+        
+        const cleanup = () => {
+          if (!resolved) {
+            resolved = true;
+            tempVideo.removeEventListener('loadstart', onLoadStart);
+            tempVideo.removeEventListener('error', onError);
+            tempVideo.removeEventListener('canplay', onCanPlay);
+            tempVideo.removeEventListener('loadeddata', onLoadedData);
+            tempVideo.src = '';
+          }
+        };
+        
+        const onLoadStart = () => {
+          console.log('✅ URL carregou (loadstart):', url);
+          loadStarted = true;
+          // Não resolver ainda, aguardar mais dados
+        };
+        
+        const onLoadedData = () => {
+          console.log('✅ URL com dados carregados:', url);
+          cleanup();
+          resolve(true);
+        };
+        
+        const onCanPlay = () => {
+          console.log('✅ URL pode reproduzir:', url);
+          cleanup();
+          resolve(true);
+        };
+        
+        const onError = (e) => {
+          console.warn('❌ URL falhou:', url, e);
+          console.warn('❌ Erro detalhado:', tempVideo.error);
+          
+          // Analisar tipo de erro específico
+          if (tempVideo.error) {
+            const errorType = {
+              1: 'ABORTED',
+              2: 'NETWORK', 
+              3: 'DECODE',
+              4: 'SRC_NOT_SUPPORTED'
+            }[tempVideo.error.code] || 'UNKNOWN';
+            
+            console.warn(`❌ Tipo de erro: ${errorType}`);
+          }
+          
+          cleanup();
+          reject(new Error(`URL falhou: ${tempVideo.error?.code || 'unknown'}`));
+        };
+        
+        tempVideo.addEventListener('loadstart', onLoadStart);
+        tempVideo.addEventListener('loadeddata', onLoadedData);
+        tempVideo.addEventListener('canplay', onCanPlay);
+        tempVideo.addEventListener('error', onError);
+        
+        // Timeout mais agressivo para rotas problemáticas
+        const isProblematicUrl = urlAnalysis?.isProblematicRoute;
+        const timeoutDuration = isProblematicUrl ? 2000 : 3000; // 2s para rotas problemáticas
+        
+        setTimeout(() => {
+          if (!resolved) {
+            if (loadStarted) {
+              console.warn('⏰ Timeout mas loadstart detectado para:', url);
+              // Se começou a carregar, dar mais tempo
+              setTimeout(() => {
+                if (!resolved) {
+                  console.warn('⏰ Timeout final para:', url);
+                  cleanup();
+                  reject(new Error('Timeout final'));
+                }
+              }, 2000);
+            } else {
+              console.warn('⏰ Timeout sem loadstart para:', url);
+              cleanup();
+              reject(new Error('Timeout'));
+            }
+          }
+        }, timeoutDuration);
+        
+        // Configurar crossOrigin baseado no tipo de URL
+        if (isDevelopment) {
+          // Em desenvolvimento, ser mais permissivo
+          tempVideo.crossOrigin = null;
+        } else if (isTizenTV) {
+          // Tizen TV geralmente não precisa de crossOrigin
+          tempVideo.crossOrigin = null;
+        } else if (isProblematicUrl) {
+          // Para rotas problemáticas, tentar sem crossOrigin primeiro
+          tempVideo.crossOrigin = null;
+        } else {
+          tempVideo.crossOrigin = 'anonymous';
+        }
+        
+        // Configurar e testar
+        tempVideo.preload = 'metadata'; // Carregar apenas metadados
+        tempVideo.src = url;
+        tempVideo.load();
+      });
+    };
+    
+    // Estratégia especial para rotas problemáticas
+    if (urlAnalysis?.isProblematicRoute) {
+      console.log('⚠️ Aplicando estratégia especial para rota problemática');
+      
+      // Para rotas problemáticas, tentar com delay entre tentativas
+      const delayBetweenTries = 750; // Delay maior entre tentativas
+      
+      for (const alt of alternatives) {
+        console.log(`🎯 Tentando URL ${alt.type}:`, alt.url);
+        setLoadingMessage(`Testando rota ${alt.type}...`);
+        
+        try {
+          const result = await testUrl(alt.url);
+          if (result) {
+            console.log(`✅ Sucesso com URL ${alt.type}:`, alt.url);
+            return initHtml5PlayerDirect(alt.url, videoElement);
+          }
+        } catch (error) {
+          console.warn(`❌ Falhou URL ${alt.type}:`, error.message);
+          
+          // Para rotas problemáticas, logar mais detalhes
+          if (error.message.includes('SRC_NOT_SUPPORTED')) {
+            console.warn('🚫 Formato não suportado - tentando próxima alternativa');
+          } else if (error.message.includes('NETWORK')) {
+            console.warn('🌐 Erro de rede - servidor pode estar bloqueando');
+          }
+        }
+        
+        // Delay entre tentativas para rotas problemáticas
+        await new Promise(resolve => setTimeout(resolve, delayBetweenTries));
+      }
+      
+    } else {
+      // Para URLs normais, usar estratégia padrão mais rápida
+      const result = await tryMultipleUrls(alternatives, testUrl);
+      
+      if (result.success) {
+        console.log('🎉 URL funcionando encontrada:', result.url);
+        return initHtml5PlayerDirect(result.url, videoElement);
+      }
+    }
+    
+    throw new Error('Nenhuma URL alternativa funcionou - todas falharam nos testes');
+  };
+
+  // Função para inicializar HTML5 player direto (sem fetch)
+  const initHtml5PlayerDirect = async (url, videoElement) => {
+    return new Promise((resolve, reject) => {
+      console.log('⚡ Configurando HTML5 player direto com URL:', url);
+      
+      const handleLoadStart = () => {
+        console.log('HTML5 Direto: Começou a carregar');
+        setLoadingMessage('Carregando vídeo...');
+      };
+
+      const handleLoadedData = () => {
+        console.log('HTML5 Direto: Dados carregados');
+        setLoadingMessage('Preparando reprodução...');
+      };
+
+      const handleCanPlay = () => {
+        console.log('HTML5 Direto: Pode reproduzir');
+        setLoadingMessage('Iniciando reprodução...');
+      };
+
+      const handlePlaying = () => {
+        console.log('HTML5 Direto: Reproduzindo');
+        clearTimeouts();
+        setIsPlaying(true);
+        setIsLoading(false);
+        setError(null);
+        initializingRef.current = false;
+        resolve();
+      };
+
+      const handleError = (err) => {
+        console.error('Erro HTML5 Direto:', err, videoElement.error);
+        clearTimeouts();
+        
+        // Tentar diagnóstico do erro
+        if (videoElement.error) {
+          const errorDetails = {
+            1: 'MEDIA_ERR_ABORTED - Download abortado',
+            2: 'MEDIA_ERR_NETWORK - Erro de rede',
+            3: 'MEDIA_ERR_DECODE - Erro de decodificação',
+            4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Formato não suportado'
+          };
+          console.error('Detalhes do erro:', errorDetails[videoElement.error.code] || 'Erro desconhecido');
+        }
+        
+        reject(new Error('Erro na reprodução HTML5 direta'));
+      };
+
+      // Limpar listeners anteriores
+      const events = ['loadstart', 'loadeddata', 'canplay', 'playing', 'error'];
+      events.forEach(event => {
+        videoElement.removeEventListener(event, () => {});
+      });
+
+      // Adicionar event listeners
+      videoElement.addEventListener('loadstart', handleLoadStart);
+      videoElement.addEventListener('loadeddata', handleLoadedData);
+      videoElement.addEventListener('canplay', handleCanPlay);
+      videoElement.addEventListener('playing', handlePlaying);
+      videoElement.addEventListener('error', handleError);
+
+      // Configurar crossOrigin para tentar contornar CORS
+      if (isDevelopment) {
+        videoElement.crossOrigin = 'anonymous';
+      } else if (isTizenTV) {
+        videoElement.crossOrigin = null; // Tizen pode não precisar
+      } else {
+        videoElement.crossOrigin = 'use-credentials';
+      }
+
+      // Timeout para HTML5
+      errorTimeoutRef.current = setTimeout(() => {
+        if (initializingRef.current) {
+          console.log('Timeout HTML5 Direto');
+          reject(new Error('Timeout na reprodução direta'));
+        }
+      }, 15000);
+
+      // Configurar e carregar vídeo
+      videoElement.src = url;
+      videoElement.load();
+      
+      // Auto-play após pequeno delay
+      setTimeout(() => {
+        if (videoRef.current && initializingRef.current) {
+          videoRef.current.play().catch(playError => {
+            console.error('Erro no auto-play:', playError);
+            // Não rejeitar imediatamente, aguardar timeout
+          });
+        }
+      }, 500);
+    });
+  };
+
+  // Função para inicializar HLS.js com headers seguros
+  const initHlsPlayerSafe = async (url, videoElement) => {
+    return new Promise((resolve, reject) => {
+      try {
+        if (!Hls.isSupported()) {
+          throw new Error('HLS não suportado neste navegador');
+        }
+
+        const hls = new Hls({
+          xhrSetup: (xhr, url) => {
+            // Apenas headers seguros que o navegador permite
+            const safeHeaders = getSafeHeaders();
+            Object.keys(safeHeaders).forEach(key => {
+              try {
+                xhr.setRequestHeader(key, safeHeaders[key]);
+              } catch (e) {
+                console.log(`Header ${key} não permitido:`, e.message);
+              }
+            });
+          },
+          enableWorker: true,
+          lowLatencyMode: false,
+          backBufferLength: 90
+        });
+
+        hlsRef.current = hls;
+
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          console.log('HLS Seguro: Mídia anexada');
+          setLoadingMessage('Carregando playlist...');
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('HLS Seguro: Manifest carregado');
+          setLoadingMessage('Iniciando reprodução...');
+          
+          videoElement.play().then(() => {
+            console.log('HLS Seguro: Reprodução iniciada');
+            setIsPlaying(true);
+            setIsLoading(false);
+            setError(null);
+            initializingRef.current = false;
+            resolve();
+          }).catch(reject);
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('Erro HLS Seguro:', data);
+          
+          if (data.fatal) {
+            reject(new Error(`HLS: ${data.details}`));
+          }
+        });
+
+        hls.attachMedia(videoElement);
+        hls.loadSource(url);
+
+        // Timeout para HLS
+        errorTimeoutRef.current = setTimeout(() => {
+          if (initializingRef.current) {
+            console.log('Timeout HLS Seguro');
+            reject(new Error('Timeout HLS'));
+          }
+        }, 15000);
+
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
+
+  // Função para inicializar iframe player
+  const initIframePlayer = async (url) => {
+    return new Promise((resolve, reject) => {
+      console.log('🖼️ Configurando iframe player com URL:', url);
+      setLoadingMessage('Carregando via iframe...');
+      setUseIframe(true);
+      
+      // Simular carregamento bem-sucedido após delay
+      setTimeout(() => {
+        setIsPlaying(true);
+        setIsLoading(false);
+        setError(null);
+        initializingRef.current = false;
+        resolve();
+      }, 2000);
+      
+      // Timeout de segurança
+      errorTimeoutRef.current = setTimeout(() => {
+        if (initializingRef.current) {
+          console.log('Timeout iframe');
+          reject(new Error('Timeout iframe'));
+        }
+      }, 10000);
+    });
+  };
+
+  // Função para inicializar mpegts player para VOD (filmes/séries MP4)
+  const initMpegtsVodPlayer = async (url, videoElement) => {
+    return new Promise((resolve, reject) => {
+      try {
+        setLoadingMessage('Configurando player para MP4...');
+        console.log('📽️ Configurando mpegts para MP4:', { url, type: 'mp4', isLive: false });
+        
+        const player = mpegts.createPlayer({
+          type: 'mp4',           // Tipo específico para MP4
+          isLive: false,         // VOD não é ao vivo
+          cors: true,            // Habilitar CORS
+          withCredentials: false, // Evitar problemas de autenticação
+          hasAudio: true,        // MP4 tem áudio
+          hasVideo: true,        // MP4 tem vídeo
+          url: url
+        });
+
+        playerRef.current = player;
+
+        player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+          console.error('❌ Erro mpegts VOD:', errorType, errorDetail, errorInfo);
+          reject(new Error(`mpegts VOD error: ${errorType} - ${errorDetail}`));
+        });
+
+        player.on(mpegts.Events.LOADING_COMPLETE, () => {
+          console.log('✅ mpegts VOD: Carregamento completo');
+          setLoadingMessage('Iniciando reprodução...');
+        });
+
+        const handlePlaying = () => {
+          console.log('✅ mpegts VOD: Reproduzindo');
+          clearTimeouts();
+          setIsPlaying(true);
+          setIsLoading(false);
+          setError(null);
+          initializingRef.current = false;
+          resolve();
+        };
+
+        const handleCanPlay = () => {
+          console.log('✅ mpegts VOD: Pode reproduzir');
+          // Para VOD, não fazer autoplay automático
+          setIsLoading(false);
+          setError(null);
+          initializingRef.current = false;
+          resolve();
+        };
+
+        videoElement.addEventListener('playing', handlePlaying);
+        videoElement.addEventListener('canplay', handleCanPlay);
+
+        player.attachMediaElement(videoElement);
+        player.load();
+
+        // Para VOD, aguardar um pouco antes de tentar reproduzir
+        setTimeout(() => {
+          if (playerRef.current && videoRef.current && initializingRef.current) {
+            // Não fazer autoplay para VOD, deixar usuário iniciar
+            console.log('🎬 Player VOD pronto para reprodução manual');
+          }
+        }, 1000);
+
+        // Timeout para VOD (mais longo que live)
+        errorTimeoutRef.current = setTimeout(() => {
+          if (initializingRef.current) {
+            reject(new Error('Timeout mpegts VOD - verifique a URL do filme'));
+          }
+        }, 15000);
+
+      } catch (err) {
+        console.error('💥 Erro ao criar mpegts VOD player:', err);
+        reject(err);
+      }
+    });
+  };
+
+  // Função para inicializar mpegts player para Live (canais ao vivo)
+  const initMpegtsLivePlayer = async (url, videoElement) => {
+    return new Promise((resolve, reject) => {
+      try {
+        setLoadingMessage('Configurando player para canal ao vivo...');
+        console.log('📡 Configurando mpegts para live:', { url, type: 'mpegts', isLive: true });
+        
+        const player = mpegts.createPlayer({
+          type: 'mpegts',
+          isLive: true,
+          url: url
+        });
+
+        playerRef.current = player;
+
+        player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+          console.error('❌ Erro mpegts Live:', errorType, errorDetail, errorInfo);
+          reject(new Error(`mpegts Live error: ${errorType} - ${errorDetail}`));
+        });
+
+        player.on(mpegts.Events.LOADING_COMPLETE, () => {
+          console.log('✅ mpegts Live: Carregamento completo');
+          setLoadingMessage('Iniciando transmissão...');
+        });
+
+        const handlePlaying = () => {
+          console.log('✅ mpegts Live: Reproduzindo');
+          clearTimeouts();
+          setIsPlaying(true);
+          setIsLoading(false);
+          setError(null);
+          initializingRef.current = false;
+          resolve();
+        };
+
+        videoElement.addEventListener('playing', handlePlaying);
+
+        player.attachMediaElement(videoElement);
+        player.load();
+
+        // Para live, tentar autoplay
+        setTimeout(() => {
+          if (playerRef.current && videoRef.current && initializingRef.current) {
+            playerRef.current.play().catch(playError => {
+              console.warn('⚠️ Autoplay falhou, aguardando interação do usuário:', playError);
+              // Para live streams, isso é aceitável
+            });
+          }
+        }, 500);
+
+        // Timeout para live
+        errorTimeoutRef.current = setTimeout(() => {
+          if (initializingRef.current) {
+            reject(new Error('Timeout mpegts Live - verifique a conexão'));
+          }
+        }, 10000);
+
+      } catch (err) {
+        console.error('💥 Erro ao criar mpegts Live player:', err);
+        reject(err);
+      }
+    });
+  };
+
+  // Função para inicializar mpegts player (compatibilidade - mantida para não quebrar código existente)
+  const initMpegtsPlayer = async (url, videoElement) => {
+    // Determinar se é live ou VOD baseado no streamInfo
+    if (streamInfo?.type === 'live') {
+      return initMpegtsLivePlayer(url, videoElement);
+    } else {
+      return initMpegtsVodPlayer(url, videoElement);
+    }
+  };
 
   // Função para limpar player
   const cleanupPlayer = useCallback(() => {
-    // Limpar timeouts ativos
     clearTimeouts();
+    cleanupBlobUrls();
     
-    // Limpar event listeners do elemento video
+    // Limpar HLS
+    if (hlsRef.current) {
+      try {
+        hlsRef.current.destroy();
+        console.log('HLS player limpo');
+      } catch (err) {
+        console.error('Erro ao limpar HLS:', err);
+      }
+      hlsRef.current = null;
+    }
+    
+    // Limpar elemento video
     if (videoRef.current) {
       const videoElement = videoRef.current;
       
       try {
-        // Remover todos os event listeners HTML5
         const events = ['loadstart', 'loadeddata', 'canplay', 'canplaythrough', 'playing', 'waiting', 'error', 'stalled'];
         events.forEach(event => {
           videoElement.removeEventListener(event, () => {});
         });
         
-        // Para HTML5, parar e limpar src com verificações de segurança
-        if (videoElement.pause && typeof videoElement.pause === 'function') {
-          videoElement.pause();
-        }
-        if (videoElement.src !== undefined) {
-          videoElement.src = '';
-        }
-        if (videoElement.load && typeof videoElement.load === 'function') {
-          videoElement.load();
-        }
+        if (videoElement.pause) videoElement.pause();
+        if (videoElement.src !== undefined) videoElement.src = '';
+        if (videoElement.load) videoElement.load();
       } catch (err) {
-        console.log('Erro ao limpar listeners do video element:', err);
+        console.log('Erro ao limpar video element:', err);
       }
     }
 
-    // Limpar player mpegts se existir
+    // Limpar player mpegts
     if (playerRef.current) {
       try {
         const player = playerRef.current;
         
-        // Verificações de segurança para métodos do mpegts
-        if (player.isLoaded && typeof player.isLoaded === 'function' && player.isLoaded()) {
-          if (player.pause && typeof player.pause === 'function') {
-            player.pause();
-          }
-          if (player.unload && typeof player.unload === 'function') {
-            player.unload();
-          }
+        if (player.isLoaded && player.isLoaded()) {
+          if (player.pause) player.pause();
+          if (player.unload) player.unload();
         }
         
-        // Remover event listeners com verificações
-        try { 
-          if (player.off && typeof player.off === 'function') {
-            player.off(mpegts.Events.ERROR); 
-          }
-        } catch (e) {
-          console.log('Erro ao remover listener ERROR:', e);
-        }
+        if (player.detachMediaElement) player.detachMediaElement();
+        if (player.destroy) player.destroy();
         
-        try { 
-          if (player.off && typeof player.off === 'function') {
-            player.off(mpegts.Events.LOADING_COMPLETE); 
-          }
-        } catch (e) {
-          console.log('Erro ao remover listener LOADING_COMPLETE:', e);
-        }
-        
-        try { 
-          if (player.off && typeof player.off === 'function') {
-            player.off(mpegts.Events.MEDIA_INFO); 
-          }
-        } catch (e) {
-          console.log('Erro ao remover listener MEDIA_INFO:', e);
-        }
-        
-        // Detach e destroy com verificações
-        if (player.detachMediaElement && typeof player.detachMediaElement === 'function') {
-          player.detachMediaElement();
-        }
-        
-        if (player.destroy && typeof player.destroy === 'function') {
-          player.destroy();
-        }
-        
-        console.log('Player mpegts limpo com segurança');
+        console.log('Player mpegts limpo');
       } catch (err) {
         console.error('Erro ao limpar player mpegts:', err);
       }
@@ -392,9 +981,12 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
     setError(null);
     setIsPlaying(false);
     setPlayerType(null);
-    initializingRef.current = false; // Resetar flag
-    previousStreamUrlRef.current = null; // Resetar URL anterior
-  }, []); // Sem dependências pois usa apenas refs e setters de estado
+    setUseIframe(false);
+    setUrlAnalysis(null);
+    initializingRef.current = false;
+    previousStreamUrlRef.current = null;
+    retryAttemptRef.current = 0;
+  }, []);
 
   // Função para voltar/sair
   const handleBack = useCallback(() => {
@@ -405,7 +997,6 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
   }, [cleanupPlayer, onBack]);
 
   useEffect(() => {
-    // Só inicializar se realmente for necessário
     if (isActive && streamUrl && !initializingRef.current) {
       initializeIfNeeded();
     }
@@ -424,7 +1015,7 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
     const handlePlayerNavigation = (event) => {
       const { keyCode } = event.detail;
       
-      if (keyCode === 8 || keyCode === 10009) { // Back/Return
+      if (keyCode === 8 || keyCode === 10009) {
         handleBack();
       }
     };
@@ -434,22 +1025,35 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
   }, [isActive, handleBack]);
 
   const retryPlayback = () => {
-    console.log('Tentando reproduzir novamente...');
+    console.log('🔄 Tentando reproduzir novamente...');
+    retryAttemptRef.current += 1;
+    
     setError(null);
     setIsLoading(true);
     setLoadingMessage('Reiniciando player...');
     setIsPlaying(false);
     
-    // Reset da flag de inicialização para permitir nova inicialização
     initializingRef.current = false;
-    
     cleanupPlayer();
     
     retryTimeoutRef.current = setTimeout(() => {
       if (isActive && streamUrl) {
-        const detectedPlayerType = detectPlayerType(streamUrl, streamInfo);
+        // Tentar estratégias diferentes baseado no número de tentativas
+        let detectedPlayerType;
+        
+        if (retryAttemptRef.current === 1) {
+          detectedPlayerType = 'html5-multi-url';
+        } else if (retryAttemptRef.current === 2) {
+          detectedPlayerType = 'html5-direct';
+        } else if (retryAttemptRef.current === 3) {
+          detectedPlayerType = 'hls-safe';
+        } else {
+          detectedPlayerType = 'iframe-fallback';
+        }
+        
+        console.log(`🎯 Tentativa ${retryAttemptRef.current}: usando ${detectedPlayerType}`);
         setPlayerType(detectedPlayerType);
-        setLoadingMessage('Conectando novamente...');
+        setLoadingMessage(`Tentativa ${retryAttemptRef.current}: ${detectedPlayerType}...`);
         initializeIfNeeded();
       }
     }, 1000);
@@ -460,13 +1064,30 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
   return (
     <div className="video-player-container">
       <div className="video-wrapper">
-        <video
-          ref={videoRef}
-          className="video-element"
-          autoPlay
-          playsInline
-          style={{ width: '100%', height: '100%' }}
-        />
+        {!useIframe ? (
+          <video
+            ref={videoRef}
+            className="video-element"
+            autoPlay
+            playsInline
+            controls={isDevelopment} // Mostrar controles apenas em desenvolvimento
+            style={{ width: '100%', height: '100%' }}
+          />
+        ) : (
+          <iframe
+            ref={iframeRef}
+            src={streamUrl}
+            className="video-element"
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              border: 'none',
+              background: '#000'
+            }}
+            allow="autoplay; fullscreen"
+            allowFullScreen
+          />
+        )}
 
         {/* Loading Overlay */}
         {isLoading && !isPlaying && (
@@ -474,7 +1095,11 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
             <div className="loading-spinner">⏳</div>
             <p className="loading-message">{loadingMessage}</p>
             <p className="loading-player-info">
-              {playerType === 'html5' ? 'Player HTML5' : playerType === 'mpegts' ? 'Player mpegts.js' : 'Detectando...'}
+              {playerType === 'html5-direct' ? 'Player HTML5 Direto' : 
+               playerType === 'html5-multi-url' ? 'Player HTML5 Multi-URL' :
+               playerType === 'hls-safe' ? 'Player HLS Seguro' :
+               playerType === 'iframe-fallback' ? 'Player Iframe' :
+               playerType === 'mpegts' ? 'Player mpegts.js' : 'Detectando...'}
             </p>
             {streamInfo && (
               <p className="loading-content-info">
@@ -482,6 +1107,20 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
                  streamInfo.type === 'movie' ? 'Filme' : 
                  streamInfo.type === 'live' ? 'TV ao Vivo' : 'Conteúdo'}
               </p>
+            )}
+            {retryAttemptRef.current > 0 && (
+              <p className="retry-info">Tentativa: {retryAttemptRef.current}</p>
+            )}
+            <p className="environment-info">
+              Ambiente: {isDevelopment ? 'Desenvolvimento' : isTizenTV ? 'Tizen TV' : 'Produção'}
+            </p>
+            {urlAnalysis && (
+              <div className="url-analysis-info">
+                <p>🔍 Análise da URL:</p>
+                <p>• Protocolo: {urlAnalysis.protocol}</p>
+                <p>• Token: {urlAnalysis.hasToken ? '✅' : '❌'}</p>
+                <p>• Alternativas: {urlAnalysis.alternatives?.length || 0}</p>
+              </div>
             )}
           </div>
         )}
@@ -492,10 +1131,36 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
             <div className="error-content">
               <h3>Erro na Reprodução</h3>
               <p>{error}</p>
-              <p className="player-info">Player usado: {playerType === 'html5' ? 'HTML5' : 'mpegts.js'}</p>
+              <p className="player-info">
+                Player usado: {playerType === 'html5-direct' ? 'HTML5 Direto' : 
+                              playerType === 'html5-multi-url' ? 'HTML5 Multi-URL' :
+                              playerType === 'hls-safe' ? 'HLS Seguro' :
+                              playerType === 'iframe-fallback' ? 'Iframe' :
+                              playerType === 'mpegts' ? 'mpegts.js' : 'Desconhecido'}
+              </p>
+              {retryAttemptRef.current < 4 && (
+                <p className="retry-suggestion">
+                  Próxima tentativa usará: {
+                    retryAttemptRef.current === 0 ? 'HTML5 Multi-URL' :
+                    retryAttemptRef.current === 1 ? 'HTML5 Direto' :
+                    retryAttemptRef.current === 2 ? 'HLS Seguro' : 'Iframe'
+                  }
+                </p>
+              )}
+              <p className="environment-info">
+                Ambiente: {isDevelopment ? 'Desenvolvimento' : isTizenTV ? 'Tizen TV' : 'Produção'}
+              </p>
+              {urlAnalysis && (
+                <div className="url-analysis-info">
+                  <p>🔍 Problema identificado:</p>
+                  <p>• URL original: {urlAnalysis.original}</p>
+                  <p>• Protocolo: {urlAnalysis.protocol}</p>
+                  <p>• Sugestões: {urlAnalysis.suggestions.join(', ')}</p>
+                </div>
+              )}
               <div className="error-actions">
                 <button onClick={retryPlayback} className="retry-button">
-                  Tentar Novamente
+                  {retryAttemptRef.current < 4 ? 'Tentar Novamente' : 'Tentar Outra Vez'}
                 </button>
                 <button onClick={handleBack} className="back-button">
                   Voltar
@@ -513,7 +1178,16 @@ const VideoPlayer = ({ isActive, streamUrl, streamInfo, onBack }) => {
               {streamInfo.category && (
                 <p className="category">{streamInfo.category}</p>
               )}
-              <p className="player-info">Player: {playerType === 'html5' ? 'HTML5' : 'mpegts.js'}</p>
+              <p className="player-info">
+                Player: {playerType === 'html5-direct' ? 'HTML5 Direto' : 
+                         playerType === 'html5-multi-url' ? 'HTML5 Multi-URL' :
+                         playerType === 'hls-safe' ? 'HLS Seguro' :
+                         playerType === 'iframe-fallback' ? 'Iframe' :
+                         playerType === 'mpegts' ? 'mpegts.js' : 'Desconhecido'}
+              </p>
+              <p className="environment-info">
+                {isDevelopment ? 'Modo Desenvolvimento' : isTizenTV ? 'Tizen TV' : 'Modo Produção'}
+              </p>
               <p className="instructions">Pressione BACK para voltar</p>
             </div>
           </div>

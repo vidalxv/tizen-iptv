@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MoviePreview from './MoviePreview';
+import { buildStreamUrl, buildApiUrl } from '../config/serverConfig';
 import './Movies.css';
 
 const Movies = ({ isActive }) => {
@@ -110,7 +111,7 @@ const Movies = ({ isActive }) => {
   const handleMovieSelect = useCallback((movie) => {
     console.log('Filme selecionado:', movie);
     
-    // Construir URL do stream com a estrutura correta
+    // Construir URL do stream com a estrutura correta (mesma dos canais que funcionam)
     const streamUrl = `https://rota66.bar/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${movie.stream_id}`;
     
     // Informações do filme para o player
