@@ -332,7 +332,7 @@ const Search = ({ isActive }) => {
     // Construir URL e informações baseado no tipo
     switch (type) {
       case 'channel':
-        streamUrl = `https://rota66.bar/live/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}.ts`;
+        streamUrl = `https://rota66.bar/live/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}.m3u8`;
         streamInfo = {
           name: item.name,
           category: 'Canal',
@@ -342,7 +342,7 @@ const Search = ({ isActive }) => {
         break;
         
       case 'movie':
-        streamUrl = `https://rota66.bar/movie/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}.mp4`;
+        streamUrl = `https://rota66.bar/movie/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.stream_id}.m3u8`;
         streamInfo = {
           name: item.name,
           category: 'Filme',
@@ -355,7 +355,7 @@ const Search = ({ isActive }) => {
         
       case 'serie':
         // Para séries da busca, usar URL genérica
-        streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.series_id}.mp4`;
+        streamUrl = `https://rota66.bar/series/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${item.series_id}.m3u8`;
         streamInfo = {
           name: item.name,
           category: 'Série',

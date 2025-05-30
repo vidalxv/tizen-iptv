@@ -176,7 +176,7 @@ const Channels = ({ isActive }) => {
     console.log('Canal selecionado:', channel);
     
     // Construir URL do stream
-    const streamUrl = `https://rota66.bar/live/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${channel.stream_id}.ts`;
+    const streamUrl = `https://rota66.bar/live/${API_CREDENTIALS.split('&')[0].split('=')[1]}/${API_CREDENTIALS.split('&')[1].split('=')[1]}/${channel.stream_id}.m3u8`;
     
     // Informações do canal para o player
     const streamInfo = {
