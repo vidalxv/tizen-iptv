@@ -1,11 +1,28 @@
 .series-details-page {
   width: 100%;
   height: 100vh;
-  background: #0a0a0a;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
   color: #ffffff;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* Background pattern overlay */
+.series-details-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 118, 117, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* Layout Principal - Otimizado para TV */
@@ -14,7 +31,8 @@
   display: flex;
   position: relative;
   overflow: hidden;
-  transition: opacity 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
 }
 
 /* Estado expandido quando foco está nos episódios */
@@ -22,10 +40,11 @@
   height: 100vh;
 }
 
-/* Estado com transparência quando episódios estão em foco - Simplificado para TV */
+/* Estado com transparência quando episódios estão em foco */
 .series-main-layout.episodes-focused .series-info-panel {
-  opacity: 0.4;
-  background: rgba(10, 10, 20, 0.8);
+  opacity: 0.3;
+  background: rgba(10, 10, 20, 0.95);
+  backdrop-filter: blur(8px);
 }
 
 /* Estado com transparência quando episódios estão em foco - arte promocional fica normal */
@@ -33,49 +52,72 @@
   opacity: 1;
 }
 
-/* Painel de Informações (Esquerda) - Otimizado para TV seguindo padrão da sidebar */
+/* Painel de Informações (Esquerda) - Design Moderno */
 .series-info-panel {
   width: 35%;
-  min-width: 400px;
-  background: rgba(10, 10, 20, 0.95);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 2;
+  min-width: 320px;
+  background: 
+    linear-gradient(135deg, rgba(10, 10, 20, 0.98) 0%, rgba(16, 16, 32, 0.96) 100%);
+  border-right: 1px solid rgba(99, 102, 241, 0.2);
+  backdrop-filter: blur(20px);
+  z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: 20px; /* Usar gap ao invés de padding */
+  gap: 20px;
   overflow: hidden;
-  transition: opacity 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  box-shadow: 
+    0 0 60px rgba(99, 102, 241, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Gradiente interno elegante */
+.series-info-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+  pointer-events: none;
 }
 
 /* Aplicar margens nos elementos filhos ao invés de padding no container */
 .series-info-panel > * {
-  margin: 0 30px; /* Margem lateral nos elementos filhos */
+  margin: 0 30px;
+  position: relative;
+  z-index: 2;
 }
 
 /* Margem superior e inferior específicas */
 .series-info-panel > :first-child {
-  margin-top: 40px; /* Margem superior no primeiro elemento */
+  margin-top: 40px;
 }
 
 .series-info-panel > :last-child {
-  margin-bottom: 120px; /* Margem inferior no último elemento */
+  margin-bottom: 120px;
 }
 
-/* Quando há episódios disponíveis - borda lateral esquerda */
+/* Quando há episódios disponíveis - borda lateral moderna */
 .series-info-panel.has-episodes {
-  border-left: 4px solid #6366f1;
+  border-left: 3px solid transparent;
   background: 
-    linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, transparent 20%),
-    rgba(10, 10, 20, 0.95);
+    linear-gradient(135deg, rgba(10, 10, 20, 0.98), rgba(16, 16, 32, 0.96)),
+    linear-gradient(90deg, #6366f1, #8b5cf6);
+  background-clip: padding-box, border-box;
+  box-shadow: 
+    0 0 60px rgba(99, 102, 241, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-/* Melhorar meta informações para incluir indicador de episódios */
+/* Meta informações melhoradas */
 .series-meta-info {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   align-items: center;
 }
 
@@ -83,61 +125,86 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  /* Usar margens ao invés de padding para compatibilidade com TV */
-  margin: 8px 16px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border-radius: 16px;
+  margin: 0;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 20px;
   font-size: 0.9rem;
   font-weight: 600;
   color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  padding: 8px 16px;
+  box-shadow: 
+    0 4px 20px rgba(99, 102, 241, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
 }
 
-/* Indicador sutil na parte inferior */
+.episodes-meta-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(99, 102, 241, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Indicador sutil na parte inferior - Design moderno */
 .episodes-navigation-hint {
   position: absolute;
-  bottom: 20px;
+  bottom: 25px;
   left: 30px;
   right: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  /* Usar margens ao invés de padding para compatibilidade com TV */
-  margin: 12px;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.9rem;
+  gap: 12px;
+  margin: 0;
+  background: 
+    linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
   font-weight: 500;
+  padding: 16px 24px;
+  backdrop-filter: blur(10px);
+  box-shadow: 
+    0 8px 32px rgba(99, 102, 241, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.episodes-navigation-hint:hover {
+  background: 
+    linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%);
+  border-color: rgba(99, 102, 241, 0.5);
 }
 
 .episodes-navigation-hint i {
   color: #6366f1;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
 }
 
-/* Arte Promocional (Direita) - Otimizada */
+/* Arte Promocional (Direita) - Efeitos visuais melhorados */
 .series-promotional-art {
   flex: 1;
   position: relative;
   overflow: hidden;
-  transition: opacity 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Efeito de gradiente na borda esquerda */
+/* Efeito de gradiente na borda esquerda - mais suave */
 .series-promotional-art::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   bottom: 0;
-  width: 80px;
+  width: 120px;
   background: linear-gradient(
     to right,
-    rgba(10, 10, 20, 0.8) 0%,
-    rgba(10, 10, 20, 0.4) 50%,
+    rgba(10, 10, 20, 1) 0%,
+    rgba(10, 10, 20, 0.8) 30%,
+    rgba(10, 10, 20, 0.4) 60%,
     transparent 100%
   );
   pointer-events: none;
@@ -149,6 +216,8 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
+  filter: contrast(1.1) saturate(1.2) brightness(0.9);
+  transition: all 0.3s ease;
 }
 
 .promotional-overlay {
@@ -160,8 +229,8 @@
   background: 
     linear-gradient(
       to right,
-      rgba(10, 10, 20, 0.8) 0%,
-      rgba(10, 10, 20, 0.6) 15%,
+      rgba(10, 10, 20, 0.9) 0%,
+      rgba(10, 10, 20, 0.7) 15%,
       rgba(10, 10, 20, 0.3) 35%,
       rgba(10, 10, 20, 0.1) 60%,
       transparent 80%
@@ -169,55 +238,97 @@
     linear-gradient(
       to bottom,
       transparent 0%,
-      transparent 70%,
-      rgba(0, 0, 0, 0.15) 100%
+      transparent 60%,
+      rgba(0, 0, 0, 0.3) 100%
     );
 }
 
-/* Seção de Informações do Painel */
+/* Seção de Informações do Painel - Design elegante */
 .series-header-info {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 28px;
   padding-bottom: 24px;
+  position: relative;
+}
+
+.series-header-info::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 1px;
 }
 
 .series-provider-logo {
-  width: 120px;
+  width: 140px;
   height: auto;
-  margin-bottom: 16px;
-  opacity: 0.8;
+  margin-bottom: 20px;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
 }
 
 .new-episode-badge {
-  display: inline-block;
-  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
   color: white;
-  /* Usar margens ao invés de padding para compatibilidade com TV */
-  margin: 6px 16px;
-  border-radius: 20px;
+  margin: 0 0 20px 0;
+  border-radius: 25px;
   font-size: 0.85rem;
-  font-weight: 600;
-  margin-bottom: 16px;
+  font-weight: 700;
   letter-spacing: 0.5px;
+  padding: 10px 20px;
+  box-shadow: 
+    0 4px 20px rgba(255, 107, 53, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { 
+    box-shadow: 
+      0 4px 20px rgba(255, 107, 53, 0.4),
+      0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  50% { 
+    box-shadow: 
+      0 6px 30px rgba(255, 107, 53, 0.6),
+      0 1px 3px rgba(0, 0, 0, 0.2);
+  }
 }
 
 .series-title-main {
-  font-size: 2.8rem;
-  font-weight: 800;
-  margin: 0 0 16px 0;
+  font-size: 3.2rem;
+  font-weight: 900;
+  margin: 0 0 20px 0;
   line-height: 1.1;
   color: #ffffff;
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* Sinopse sempre expandida */
+/* Sinopse melhorada */
 .series-synopsis {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .synopsis-text {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1rem;
-  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.05rem;
+  line-height: 1.7;
   margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .synopsis-text.expanded {
@@ -225,95 +336,151 @@
   overflow: visible;
 }
 
+/* Gêneros com design moderno */
 .series-genres {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 32px;
 }
 
 .genre-tag {
-  /* Usar margin ao invés de padding para compatibilidade com TV */
-  margin: 6px 14px;
-  background: rgba(255, 255, 255, 0.1);
+  margin: 0;
+  background: 
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
   color: rgba(255, 255, 255, 0.9);
-  border-radius: 16px;
+  border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Botões de Ação - Otimizados */
+.genre-tag:hover {
+  background: 
+    linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* Botões de Ação - Design premium lado a lado */
 .series-action-buttons {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-direction: row;
+  gap: 16px;
   margin-top: auto;
-  padding-top: 20px;
+  margin-top: 24px;
+  align-items: stretch;
 }
 
 .primary-action-btn {
-  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
   color: white;
   border: none;
-  /* Usar margens ao invés de padding para compatibilidade com TV */
-  margin: 16px 24px;
-  border-radius: 12px;
+  margin: 0;
+  border-radius: 16px;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
   min-height: 56px;
+  padding: 0 32px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  flex: 2;
+  box-shadow: 
+    0 8px 32px rgba(99, 102, 241, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.primary-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.primary-action-btn:hover::before {
+  left: 100%;
 }
 
 .primary-action-btn:hover,
 .primary-action-btn:focus {
-  background: #5046e5;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #5046e5 0%, #7c3aed 50%, #db2777 100%);
+  transform: translateY(-3px);
+  box-shadow: 
+    0 12px 40px rgba(99, 102, 241, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .secondary-action-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: 
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
   color: #f0f0f0;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  /* Usar margens ao invés de padding para compatibilidade com TV */
-  margin: 14px 24px;
-  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  margin: 0;
+  border-radius: 16px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  backdrop-filter: blur(10px);
-  min-height: 52px;
+  min-height: 56px;
+  padding: 0 24px;
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
 }
 
 .secondary-action-btn:hover,
 .secondary-action-btn:focus {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: 
+    linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
 }
 
-/* Nova Área de Episódios - Otimizada para TV */
+/* Área de Episódios - Design cinematográfico */
 .series-episodes-area {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   height: 0;
-  background: rgba(10, 10, 20, 0.98);
-  border-top: 2px solid rgba(99, 102, 241, 0.4);
-  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 10;
+  background: 
+    linear-gradient(180deg, rgba(10, 10, 20, 0.98) 0%, rgba(5, 5, 15, 0.99) 100%);
+  border-top: 2px solid transparent;
+  background-clip: padding-box;
+  border-image: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899) 1;
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 15;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .series-episodes-area.episodes-focused {
@@ -338,11 +505,11 @@
 
 /* Aplicar margens nos elementos filhos */
 .episodes-tab-content > * {
-  margin: 0 40px; /* Margem lateral nos elementos filhos */
+  margin: 0 40px;
 }
 
 .episodes-tab-content > :first-child {
-  margin-top: 30px; /* Margem superior no primeiro elemento */
+  margin-top: 40px;
 }
 
 .episodes-grid-container {
@@ -351,38 +518,72 @@
   overflow-x: hidden;
 }
 
-/* Grid de Episódios - Otimizado como Carrossel Horizontal */
+/* Grid de Episódios - Design de carrossel premium */
 .episodes-grid-new {
   display: flex;
-  gap: 20px;
-  /* Usar margin ao invés de padding para compatibilidade com TV */
-  margin: 30px 40px;
+  gap: 24px;
+  margin: 40px 40px;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  padding: 20px 0;
 }
 
 .episodes-grid-new::-webkit-scrollbar {
   display: none;
 }
 
-/* Cartão de Episódio - Otimizado */
+/* Cartão de Episódio - Design premium */
 .episode-card-new {
-  width: 280px;
-  background: rgba(20, 20, 30, 0.8);
-  border-radius: 12px;
+  width: 320px;
+  background: 
+    linear-gradient(145deg, rgba(20, 20, 40, 0.9) 0%, rgba(10, 10, 25, 0.95) 100%);
+  border-radius: 20px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
-  /* Remover padding do container, usar margin */
-  margin: 16px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  margin: 0;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  height: 240px;
+  height: 280px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.episode-card-new::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.episode-card-new:hover::before {
+  opacity: 1;
+}
+
+.episode-card-new:hover,
+.episode-card-new.focused {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: 
+    linear-gradient(145deg, rgba(30, 30, 50, 0.95) 0%, rgba(20, 20, 35, 1) 100%);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 20px 60px rgba(99, 102, 241, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* Mensagem de Nenhum Episódio */
@@ -394,204 +595,372 @@
   height: 100%;
   color: rgba(255, 255, 255, 0.7);
   text-align: center;
-  /* Usar margin ao invés de padding para compatibilidade com TV */
-  margin: 40px;
+  margin: 60px;
 }
 
 .no-episodes-message i {
-  font-size: 3rem;
-  margin-bottom: 16px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 4rem;
+  margin-bottom: 24px;
+  color: rgba(99, 102, 241, 0.5);
+  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.3));
 }
 
 .no-episodes-message h3 {
-  margin: 0 0 8px 0;
-  font-size: 1.4rem;
-  font-weight: 600;
+  margin: 0 0 12px 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .no-episodes-message p {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
 }
 
-/* Thumbnail do Episódio */
+/* Thumbnail do Episódio - Design Premium */
 .episode-thumbnail {
   position: relative;
-  height: 140px;
+  height: 160px;
   overflow: hidden;
   flex-shrink: 0;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
 }
 
 .episode-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.2s ease-in-out;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: contrast(1.1) saturate(1.1) brightness(0.95);
 }
 
+/* Overlay gradiente sutil no thumbnail */
+.episode-thumbnail::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.1) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.episode-card-new:hover .episode-thumbnail::after {
+  opacity: 1;
+}
+
+/* Play Overlay Premium */
 .episode-play-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.7);
+  background: 
+    linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(139, 92, 246, 0.95) 100%);
   border-radius: 50%;
-  width: 50px;
-  height: 50px;
+  width: 64px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s ease-in-out;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(99, 102, 241, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  z-index: 10;
 }
 
 .episode-play-overlay i {
   color: white;
-  font-size: 1.2rem;
+  font-size: 1.6rem;
+  margin-left: 3px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 .episode-card-new:hover .episode-play-overlay,
 .episode-card-new.focused .episode-play-overlay {
   opacity: 1;
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 
+    0 12px 40px rgba(99, 102, 241, 0.6),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .episode-card-new:hover .episode-thumbnail img,
 .episode-card-new.focused .episode-thumbnail img {
-  transform: scale(1.05);
+  transform: scale(1.08);
+  filter: contrast(1.2) saturate(1.3) brightness(1.05);
 }
 
-/* Detalhes do Episódio */
+/* Detalhes do Episódio - Design Premium */
 .episode-details {
   flex: 1;
   display: flex;
   flex-direction: column;
+  padding: 20px;
+  background: 
+    linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.05) 100%);
+  position: relative;
 }
 
-/* Aplicar margens nos elementos filhos do episode-details */
+/* Remover margens antigas dos filhos */
 .episode-details > * {
-  margin: 0 16px; /* Margem lateral */
+  margin: 0;
 }
 
 .episode-details > :first-child {
-  margin-top: 16px; /* Margem superior no primeiro elemento */
+  margin-top: 0;
 }
 
 .episode-details > :last-child {
-  margin-bottom: 16px; /* Margem inferior no último elemento */
+  margin-bottom: 0;
 }
 
+/* Header do episódio melhorado */
 .episode-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
+/* Badge de número do episódio premium */
 .episode-number-badge {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
-  /* Usar margens ao invés de padding para compatibilidade com TV */
-  margin: 4px 8px;
-  border-radius: 6px;
+  margin: 0;
+  border-radius: 10px;
   font-size: 0.8rem;
-  font-weight: 600;
-  min-width: 30px;
+  font-weight: 700;
+  min-width: 32px;
   text-align: center;
+  padding: 6px 12px;
+  box-shadow: 
+    0 4px 12px rgba(99, 102, 241, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
 }
 
+.episode-card-new:hover .episode-number-badge {
+  background: linear-gradient(135deg, #5046e5 0%, #7c3aed 100%);
+  transform: scale(1.05);
+  box-shadow: 
+    0 6px 16px rgba(99, 102, 241, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Duração do episódio melhorada */
 .episode-duration {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 0.85rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
 }
 
+.episode-card-new:hover .episode-duration {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Título do episódio premium */
 .episode-title-new {
-  margin: 0 0 8px 0;
-  font-size: 1.1rem;
-  font-weight: 600;
+  margin: 0 0 10px 0;
+  font-size: 1.15rem;
+  font-weight: 700;
   color: white;
   line-height: 1.3;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
 }
 
+.episode-card-new:hover .episode-title-new,
+.episode-card-new.focused .episode-title-new {
+  color: #ffffff;
+  text-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+/* Meta informações do episódio */
 .episode-meta {
   display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 16px;
+  margin-bottom: 12px;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.6);
+  align-items: center;
 }
 
+.episode-meta span {
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.episode-card-new:hover .episode-meta span {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Descrição do episódio melhorada */
 .episode-description-new {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.4;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
   margin: 0;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: color 0.3s ease;
 }
 
-/* Estado de Foco do Episódio */
+.episode-card-new:hover .episode-description-new,
+.episode-card-new.focused .episode-description-new {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Estado de Foco do Episódio - Melhorado */
 .episode-card-new.focused {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.1);
-  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.8);
+  background: 
+    linear-gradient(145deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 
+    0 0 0 3px rgba(99, 102, 241, 0.4),
+    0 20px 60px rgba(99, 102, 241, 0.4),
+    0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* Loading */
+/* Loading Premium */
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  margin: 30px 40px;
+  height: 280px;
+  background: 
+    linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border-radius: 20px;
+  margin: 40px 40px;
   color: rgba(255, 255, 255, 0.8);
   position: relative;
   overflow: hidden;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  backdrop-filter: blur(20px);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 .loading i {
-  font-size: 2.5rem;
-  margin-bottom: 16px;
+  font-size: 3.5rem;
+  margin-bottom: 24px;
   color: #6366f1;
+  animation: spin-glow 1.5s linear infinite;
+  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.6));
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes spin-glow {
+  0% { 
+    transform: rotate(0deg);
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.6));
+  }
+  50% { 
+    transform: rotate(180deg);
+    filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.8));
+  }
+  100% { 
+    transform: rotate(360deg);
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.6));
+  }
 }
 
 .loading span {
-  font-size: 1.1rem;
-  font-weight: 500;
+  font-size: 1.3rem;
+  font-weight: 600;
   text-align: center;
   color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 2;
 }
 
-/* Foco nos Botões */
+/* Foco nos Botões melhorado */
 .primary-action-btn.focused {
-  background: #5046e5;
-  transform: scale(1.05);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, #5046e5 0%, #7c3aed 50%, #db2777 100%);
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 
+    0 0 0 4px rgba(99, 102, 241, 0.4),
+    0 12px 40px rgba(99, 102, 241, 0.5);
 }
 
 .secondary-action-btn.focused {
-  background: rgba(99, 102, 241, 0.25);
+  background: 
+    linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%);
   border: 2px solid #6366f1;
-  transform: scale(1.02);
+  transform: scale(1.02) translateY(-1px);
+  box-shadow: 
+    0 0 0 3px rgba(99, 102, 241, 0.3),
+    0 8px 24px rgba(99, 102, 241, 0.3);
 }
 
 /* Seletor de Temporadas Estilo HBO */
 .season-selector-hbo {
   display: flex;
   align-items: center;
-  gap: 24px;
-  /* Usar margens ao invés de padding */
-  margin: 30px 40px;
+  gap: 20px;
+  margin: 25px 30px;
 }
 
 .season-title-fixed {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: white;
   white-space: nowrap;
@@ -601,7 +970,7 @@
 .season-numbers-container {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
   position: relative;
   flex: 1;
   overflow-x: auto;
@@ -614,20 +983,20 @@
 }
 
 .season-number-item {
-  /* Usar margens ao invés de padding para compatibilidade com TV */
-  margin: 12px 16px;
+  margin: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 500;
   text-align: center;
-  min-width: 40px;
+  min-width: 35px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  padding: 6px 8px;
 }
 
 .season-number-item.active {
@@ -644,8 +1013,8 @@
 
 .season-indicator-bar {
   position: absolute;
-  bottom: -8px;
-  height: 3px;
+  bottom: -6px;
+  height: 2px;
   background: linear-gradient(90deg, #6366f1, #8b5cf6);
   border-radius: 2px;
   transition: all 0.3s ease;
@@ -662,21 +1031,20 @@
 .episodes-section-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Usar margens ao invés de padding */
-  margin: 30px 40px 20px 40px;
+  gap: 6px;
+  margin: 25px 30px 15px 30px;
 }
 
 .episodes-section-title {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #ffffff;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   letter-spacing: 0.5px;
 }
 
 .episodes-section-subtitle {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   font-weight: 400;
@@ -685,13 +1053,13 @@
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  /* Usar margin ao invés de padding para compatibilidade com TV */
-  margin: 8px 16px;
+  gap: 6px;
+  margin: 6px 12px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
+  padding: 4px 8px;
 }
 
 .age-rating {
@@ -707,45 +1075,56 @@
 /* Media Queries */
 @media (max-width: 1366px) {
   .series-info-panel {
-    min-width: 350px;
+    min-width: 280px;
   }
   
   .series-info-panel > * {
-    margin: 0 25px;
+    margin: 0 20px;
   }
   
   .series-info-panel > :first-child {
-    margin-top: 30px;
+    margin-top: 25px;
   }
   
   .series-info-panel > :last-child {
-    margin-bottom: 100px;
+    margin-bottom: 80px;
   }
   
   .series-title-main {
-    font-size: 2.4rem;
+    font-size: 2.2rem;
+  }
+
+  /* Botões de ação responsivos */
+  .primary-action-btn {
+    font-size: 1rem;
+    padding: 0 24px;
+  }
+  
+  .secondary-action-btn {
+    font-size: 0.9rem;
+    padding: 0 20px;
   }
 
   .episodes-section-header {
-    margin: 20px 30px 15px 30px;
+    margin: 20px 25px 12px 25px;
   }
 
   .episodes-section-title {
-    font-size: 1.6rem;
+    font-size: 1.4rem;
   }
   
   .episodes-grid-new {
-    gap: 16px;
-    margin: 20px 30px;
+    gap: 12px;
+    margin: 18px 25px;
   }
   
   .episode-card-new {
-    flex: 0 0 280px;
-    height: 220px;
+    flex: 0 0 240px;
+    height: 200px;
   }
   
   .episode-thumbnail {
-    height: 120px;
+    height: 110px;
   }
 }
 
@@ -760,31 +1139,64 @@
   }
   
   .series-promotional-art {
-    height: 300px;
+    height: 250px;
+  }
+
+  /* Botões de ação em telas médias */
+  .series-action-buttons {
+    gap: 12px;
+  }
+  
+  .primary-action-btn {
+    font-size: 0.95rem;
+    padding: 0 20px;
+    min-height: 52px;
+  }
+  
+  .secondary-action-btn {
+    font-size: 0.85rem;
+    padding: 0 16px;
+    min-height: 52px;
   }
 
   .episodes-section-header {
-    margin: 15px 20px 10px 20px;
+    margin: 15px 20px 8px 20px;
   }
 
   .episodes-section-title {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
 
   .episodes-section-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
   
   .episodes-grid-new {
-    margin: 20px;
+    margin: 15px 20px;
   }
   
   .episode-card-new {
-    flex: 0 0 250px;
-    height: 200px;
+    flex: 0 0 220px;
+    height: 180px;
   }
   
   .episode-thumbnail {
-    height: 100px;
+    height: 90px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Em telas muito pequenas, empilhar os botões */
+  .series-action-buttons {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .primary-action-btn,
+  .secondary-action-btn {
+    flex: 1;
+    min-height: 48px;
+    font-size: 0.9rem;
+    padding: 0 16px;
   }
 } 
